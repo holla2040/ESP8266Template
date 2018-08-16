@@ -4,6 +4,11 @@
 #include <ESP8266HTTPUpdateServer.h> // curl -F "image=@/tmp/arduino_build_435447/ESP8266Template.ino.bin" myLoc.local/upload
 #include <WiFiManager.h>        //https://github.com/tzapu/WiFiManager
 
+/*
+  upload the contents of the data folder with MkSPIFFS Tool ("ESP8266 Sketch Data Upload" in Tools menu in Arduino IDE)
+  or you can upload the contents of a folder if you CD in that folder and run the following command:
+  for file in `ls -A1`; do curl -F "file=@$PWD/$file" myLoc.local/edit; done
+*/
 
 #define LED 2
 
