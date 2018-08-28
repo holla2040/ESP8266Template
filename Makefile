@@ -12,6 +12,13 @@ run: bin
 flash: 
 	/home/holla/.arduino15/packages/esp8266/tools/esptool/0.4.13/esptool -vv -cd nodemcu -cb 921600 -cp /dev/ttyUSB0 -ca 0x00000 -cf /tmp/arduino_build/$(ino).bin 
 
+files:
+	@./transferdata.sh
+
+index:
+	@echo "uploading index.htm"
+	@curl -F "file=@./data/index.htm" myLoc.local/edit
+
 clean:
 	rm -rf /tmp/arduino_build/*
 	rm -rf /tmp/arduino_cache/*

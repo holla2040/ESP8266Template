@@ -25,6 +25,33 @@
     var heap,temp,digi;
     var reloadPeriod = 1000;
     var running = false;
+    var websock;
+
+    function webSocketLoad() {
+      websock = new WebSocket('ws://' + window.location.hostname + ':81/');
+      websock.onopen = function(evt) { console.log('websock open'); };
+      websock.onclose = function(evt) { console.log('websock close'); };
+      websock.onerror = function(evt) { console.log(evt); };
+      websock.onmessage = function(evt) {
+        // console.log(evt);
+        [key,value] = evt.data.split(":");
+        switch(key) {
+          case "led":
+            led.innerHTML = value;
+            break;
+          case "uptime":
+            uptime.innerHTML = value;
+            break;
+        };
+      };
+    };
+
+    function buttonclick(e) {
+      if (e.id == "ledon")
+        websock.send("led:1");
+      else
+        websock.send("led:0");
+    }
     
     function loadValues(){
       if(!running) return;
@@ -40,7 +67,7 @@
           } else running = false;
         }
       };
-      xh.open("GET", "/all", true);
+      xh.open("GET", "/status", true);
       xh.send(null);
     };
     
@@ -79,11 +106,15 @@
       temp = createGraph(document.getElementById("analog"), "Analog Input", 100, 128, 0, 1023, false, "cyan");
       heap = createGraph(document.getElementById("heap"), "Current Heap", 100, 125, 0, 30000, true, "orange");
       digi = createDigiGraph(document.getElementById("digital"), "GPIO", 100, 146, [0, 4, 5, 16], "gold");
+
+      webSocketLoad();
       run();
     }
   </script>
 </head>
 <body id="index" style="margin:0; padding:0;" onload="onBodyLoad()">
+ <pre> uptime: <span id="uptime">???</span>
+ led:    <span id="led">???</span></pre>
   <div id="controls" style="display: block; border: 1px solid rgb(68, 68, 68); padding: 5px; margin: 5px; width: 362px; background-color: rgb(238, 238, 238);">
     <label>Period (ms):</label>
     <input type="number" id="refresh-rate"/>

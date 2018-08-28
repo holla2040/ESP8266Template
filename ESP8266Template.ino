@@ -2,12 +2,13 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266HTTPUpdateServer.h> // curl -F "image=@/tmp/arduino_build_435447/ESP8266Template.ino.bin" myLoc.local/upload
+#include <WebSocketsServer.h>
 #include <WiFiManager.h>        //https://github.com/tzapu/WiFiManager
 
 /*
   upload the contents of the data folder with MkSPIFFS Tool ("ESP8266 Sketch Data Upload" in Tools menu in Arduino IDE)
   or you can upload the contents of a folder if you CD in that folder and run the following command:
-  for file in `ls -A1`; do curl -F "file=@$PWD/$file" myLoc.local/edit; done
+  for file in `ls -A1`; do echo $file;curl -F "file=@$PWD/$file" myLoc.local/edit; done
 */
 
 #define LED 2
@@ -17,6 +18,8 @@ uint32_t ledTimeout;
 #define LEDTIMEOUT 500
 
 ESP8266WebServer httpServer(80);
+WebSocketsServer webSocketServer = WebSocketsServer(81);
+
 ESP8266HTTPUpdateServer httpUpdater;
 const char *update_path = "/upload";
 WiFiManager wifiManager;
@@ -46,6 +49,69 @@ void handleRoot() {
   httpServer.send(200, "text/html", temp);
 }
 
+void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
+  Serial.printf("webSocketEvent(%d, %d, ...)\r\n", num, type);
+  switch(type) {
+    case WStype_DISCONNECTED:
+      Serial.printf("[%u] Disconnected!\r\n", num);
+      break;
+    case WStype_CONNECTED:
+      {
+        IPAddress ip = webSocketServer.remoteIP(num);
+        Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\r\n", num, ip[0], ip[1], ip[2], ip[3], payload);
+/*
+        // Send the current LED status
+        if (LEDStatus) {
+          webSocketServer.sendTXT(num, LEDON, strlen(LEDON));
+        }
+        else {
+          webSocketServer.sendTXT(num, LEDOFF, strlen(LEDOFF));
+        }
+*/
+      }
+      break;
+    case WStype_TEXT:
+      Serial.printf("[%u] get Text: %s\r\n", num, payload);
+
+/*
+      if (strcmp(LEDON, (const char *)payload) == 0) {
+        writeLED(true);
+      }
+      else if (strcmp(LEDOFF, (const char *)payload) == 0) {
+        writeLED(false);
+      }
+      else {
+        Serial.println("Unknown command");
+      }
+      // send data to all connected clients
+*/
+      webSocketServer.broadcastTXT(payload, length);
+      break;
+    case WStype_BIN:
+      Serial.printf("[%u] get binary length: %u\r\n", num, length);
+      hexdump(payload, length);
+
+      // echo data back to browser
+      webSocketServer.sendBIN(num, payload, length);
+      break;
+    default:
+      Serial.printf("Invalid WStype [%d]\r\n", type);
+      break;
+  }
+}
+
+
+//get heap status, analog input value and all GPIO statuses in one json call
+void handleStatus() {
+    String json = "{";
+    json += "\"heap\":" + String(ESP.getFreeHeap());
+    json += ", \"analog\":" + String(analogRead(A0));
+    json += ", \"gpio\":" + String((uint32_t)(((GPI | GPO) & 0xFFFF) | ((GP16I & 0x01) << 16)));
+    json += "}";
+    httpServer.send(200, "text/json", json);
+    json = String();
+}
+
 void handleNotFound() {
   String message = "File Not Found\n\n";
   message += "URI: ";
@@ -71,7 +137,7 @@ void setup(void) {
   // wifiManager.resetSettings();
   wifiManager.autoConnect(LOCATION);
 
-  httpServer.on("/", handleRoot);
+  httpServer.on("/status", HTTP_GET, handleStatus );
   httpServer.on("/reset", []() {
     httpServer.send(200, "text/plain", "reseting config and hardware\n");
     wifiManager.resetSettings();
@@ -91,14 +157,27 @@ void setup(void) {
       Serial.print(LOCATION);
       Serial.println(".local");
   }
+  webSocketServer.begin();
+  webSocketServer.onEvent(webSocketEvent);
 }
 
 void loop(void) {
   httpServer.handleClient();
+  webSocketServer.loop();
+
   if (millis() > ledTimeout) {
+    char line[20];
     digitalWrite(LED,!digitalRead(LED));
+
+    sprintf(line,"uptime:%d",millis()/25);
+    webSocketServer.broadcastTXT(line,strlen(line));
+
+    sprintf(line,"led:%d",!digitalRead(LED));
+    webSocketServer.broadcastTXT(line,strlen(line));
+
     ledTimeout = millis() + LEDTIMEOUT;
   }
+
   ESP.wdtFeed(); 
   yield();
 }
