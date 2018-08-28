@@ -8,6 +8,6 @@ Supports
 * WebSockets
 * Non-delay led blink with heartbeat interval config.json support
 * SPIFFS
-** ArduinoJson
-** config.json parsing
+ * ArduinoJson
+ * config.json parsing
 * index.htm has ajax and websocket example code
