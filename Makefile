@@ -6,6 +6,7 @@
 #  delete -dump-prefs -verbose
 #  add -quiet=1
 # hopefully arduino-cli will eliminate this hack
+# or use, https://github.com/plerup/makeEspArduino
 
 ino = $(wildcard *.ino)
 
@@ -23,6 +24,19 @@ flash:
 
 files:
 	@./transferdata.sh
+	curl myLoc.local/reload
+
+reload:
+	curl myLoc.local/reload
+
+ota:
+	curl -F "image=@/tmp/arduino_build/$(ino).bin" myLoc.local/upload
+
+reboot:
+	curl myLoc.local/reboot
+
+reset:
+	curl myLoc.local/reset
 
 index:
 	@echo "uploading index.htm"

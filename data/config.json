@@ -1,5 +1,5 @@
 {
  name: "test",
  label: "testl",
- timeout: 2000
+ heartbeat: 1000
 }

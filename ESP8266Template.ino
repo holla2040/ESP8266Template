@@ -1,7 +1,7 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
-#include <ESP8266HTTPUpdateServer.h> // curl -F "image=@/tmp/arduino_build_435447/ESP8266Template.ino.bin" myLoc.local/upload
+#include <ESP8266HTTPUpdateServer.h> // curl -F "image=@/tmp/arduino_build/ESP8266Template.ino.bin" myLoc.local/upload
 #include <WebSocketsServer.h>
 #include <WiFiManager.h>        //https://github.com/tzapu/WiFiManager
 #include <EEPROM.h>
@@ -84,15 +84,18 @@ void handleStatus() {
 }
 
 void configLoad() {
-  /*
-  File file = SPIFFS.open("config.json", "r");
-  DynamicJsonBuffer jb;
-  JsonObject& config = jb.parseObject(file);
-  file.close();
-  if (!config.success()) {
+  StaticJsonDocument<512> doc;
+  File file = SPIFFS.open("/config.json", "r");
+  DeserializationError error = deserializeJson(doc, file);
+  if (error) {
     Serial.println(F("Failed to read file, using default configuration"));
+  } else {
+    JsonObject config = doc.as<JsonObject>();
+    heartbeat = config["heartbeat"];
+    Serial.print("heartbeat: ");
+    Serial.println(heartbeat);
+    file.close();
   }
-  */
 }
 
 void handleNotFound() {
@@ -120,9 +123,8 @@ void setup(void) {
   pinMode(LED, OUTPUT);
 
   /* default values, updated by config.json parsing */
-  heartbeat = 5000;
+  heartbeat = 1000;
   strcpy(location,"myLoc");
-
 
 
   // wifiManager.resetSettings();
@@ -130,12 +132,20 @@ void setup(void) {
 
   httpServer.on("/status", HTTP_GET, handleStatus );
   httpServer.on("/reset", []() {
-    httpServer.send(200, "text/plain", "reseting config and hardware\n");
+    httpServer.send(200, "text/plain", "reseting config\n");
     wifiManager.resetSettings();
+  });
+  httpServer.on("/reboot", []() {
+    httpServer.send(200, "text/plain", "rebooting\n");
     ESP.reset();
+  });
+  httpServer.on("/reload", []() {
+    httpServer.send(200, "text/plain", "reloading\n");
+    configLoad();
   });
 
   fsSetup();
+  Serial.println("filesystem started");
 
   httpUpdater.setup(&httpServer, update_path);
   httpServer.begin();
@@ -143,13 +153,17 @@ void setup(void) {
   // Serial.println(WiFi.localIP().toString());
   Serial.println("HTTP server started");
   Serial.println("HTTP updater started");
+
   if (MDNS.begin(location)) {
       Serial.print ("MDNS responder started http://");
       Serial.print(location);
       Serial.println(".local");
   }
+
   webSocketServer.begin();
   webSocketServer.onEvent(webSocketEvent);
+  Serial.println("WebSocketServer started");
+  configLoad();
 }
 
 void loop(void) {
