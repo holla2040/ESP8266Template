@@ -1,0 +1,5 @@
+{
+ name: "test",
+ label: "testl",
+ timeout: 2000
+}

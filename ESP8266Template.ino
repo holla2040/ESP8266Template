@@ -4,6 +4,8 @@
 #include <ESP8266HTTPUpdateServer.h> // curl -F "image=@/tmp/arduino_build_435447/ESP8266Template.ino.bin" myLoc.local/upload
 #include <WebSocketsServer.h>
 #include <WiFiManager.h>        //https://github.com/tzapu/WiFiManager
+#include <EEPROM.h>
+#include <ArduinoJson.h>
 
 /*
   upload the contents of the data folder with MkSPIFFS Tool ("ESP8266 Sketch Data Upload" in Tools menu in Arduino IDE)
@@ -11,11 +13,12 @@
   for file in `ls -A1`; do echo $file;curl -F "file=@$PWD/$file" myLoc.local/edit; done
 */
 
+#define LOCATIONLEN 20
 #define LED 2
 
-#define LOCATION "myLoc"
-uint32_t ledTimeout;
-#define LEDTIMEOUT 500
+char location[LOCATIONLEN];
+uint32_t timeout;
+uint32_t heartbeat;
 
 ESP8266WebServer httpServer(80);
 WebSocketsServer webSocketServer = WebSocketsServer(81);
@@ -24,30 +27,6 @@ ESP8266HTTPUpdateServer httpUpdater;
 const char *update_path = "/upload";
 WiFiManager wifiManager;
 #include "fs.h"
-
-void handleRoot() {
-  char temp[400];
-  int sec = millis() / 1000;
-  int min = sec / 60;
-  int hr = min / 60;
-
-  snprintf(temp, 400, "<html>\
-  <head>\
-    <meta http-equiv='refresh' content='5'/>\
-    <title>%s Data</title>\
-    <style>\
-      body { }\
-    </style>\
-  </head>\
-  <body>\
-    <pre>\
-    Location:    %s<br>\
-    Uptime:      %02d:%02d:%02d<br>\
-    </pre>\
-  </body>\
-</html>", LOCATION, LOCATION, hr, min % 60, sec % 60);
-  httpServer.send(200, "text/html", temp);
-}
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
   Serial.printf("webSocketEvent(%d, %d, ...)\r\n", num, type);
@@ -59,15 +38,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
       {
         IPAddress ip = webSocketServer.remoteIP(num);
         Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\r\n", num, ip[0], ip[1], ip[2], ip[3], payload);
-/*
-        // Send the current LED status
-        if (LEDStatus) {
-          webSocketServer.sendTXT(num, LEDON, strlen(LEDON));
-        }
-        else {
-          webSocketServer.sendTXT(num, LEDOFF, strlen(LEDOFF));
-        }
-*/
       }
       break;
     case WStype_TEXT:
@@ -83,8 +53,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
       else {
         Serial.println("Unknown command");
       }
-      // send data to all connected clients
 */
+
+      // send data to all connected clients
       webSocketServer.broadcastTXT(payload, length);
       break;
     case WStype_BIN:
@@ -112,6 +83,18 @@ void handleStatus() {
     json = String();
 }
 
+void configLoad() {
+  /*
+  File file = SPIFFS.open("config.json", "r");
+  DynamicJsonBuffer jb;
+  JsonObject& config = jb.parseObject(file);
+  file.close();
+  if (!config.success()) {
+    Serial.println(F("Failed to read file, using default configuration"));
+  }
+  */
+}
+
 void handleNotFound() {
   String message = "File Not Found\n\n";
   message += "URI: ";
@@ -130,12 +113,20 @@ void handleNotFound() {
 }
 
 void setup(void) {
+  char c;
+  int i;
   Serial.begin(115200);
   Serial.println("\nESP8266Template begin");
   pinMode(LED, OUTPUT);
 
+  /* default values, updated by config.json parsing */
+  heartbeat = 5000;
+  strcpy(location,"myLoc");
+
+
+
   // wifiManager.resetSettings();
-  wifiManager.autoConnect(LOCATION);
+  wifiManager.autoConnect(location);
 
   httpServer.on("/status", HTTP_GET, handleStatus );
   httpServer.on("/reset", []() {
@@ -152,9 +143,9 @@ void setup(void) {
   // Serial.println(WiFi.localIP().toString());
   Serial.println("HTTP server started");
   Serial.println("HTTP updater started");
-  if (MDNS.begin(LOCATION)) {
+  if (MDNS.begin(location)) {
       Serial.print ("MDNS responder started http://");
-      Serial.print(LOCATION);
+      Serial.print(location);
       Serial.println(".local");
   }
   webSocketServer.begin();
@@ -165,7 +156,7 @@ void loop(void) {
   httpServer.handleClient();
   webSocketServer.loop();
 
-  if (millis() > ledTimeout) {
+  if (millis() > timeout) {
     char line[20];
     digitalWrite(LED,!digitalRead(LED));
 
@@ -175,7 +166,7 @@ void loop(void) {
     sprintf(line,"led:%d",!digitalRead(LED));
     webSocketServer.broadcastTXT(line,strlen(line));
 
-    ledTimeout = millis() + LEDTIMEOUT;
+    timeout = millis() + heartbeat;
   }
 
   ESP.wdtFeed(); 
