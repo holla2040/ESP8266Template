@@ -13,6 +13,11 @@
   for file in `ls -A1`; do echo $file;curl -F "file=@$PWD/$file" myLoc.local/edit; done
 */
 
+// comment to disable TCP Socket Server,  socat TCP:office.local:23 -,raw,echo=0
+#define TCPSERVER
+#define MAX_SRV_CLIENTS 2
+#define TCPSERVERPORT 23
+
 #define NAMELEN 20
 #define LABELLEN 50
 #define LED 2
@@ -24,6 +29,11 @@ uint32_t heartbeat; // this is heartbeat interval in mS
 
 ESP8266WebServer httpServer(80);
 WebSocketsServer webSocketServer = WebSocketsServer(81);
+
+#ifdef TCPSERVER
+WiFiServer tcpServer(TCPSERVERPORT);
+WiFiClient tcpServerClients[MAX_SRV_CLIENTS];
+#endif
 
 ESP8266HTTPUpdateServer httpUpdater;
 const char *update_path = "/upload";
@@ -181,12 +191,68 @@ void setup(void) {
   webSocketServer.begin();
   webSocketServer.onEvent(webSocketEvent);
   Serial.println("WebSocketServer started");
+
+#ifdef TCPSERVER
+  tcpServer.setNoDelay(true);
+  tcpServer.begin();
+  Serial.print("tcpServer started on port ");
+  Serial.println(TCPSERVERPORT);
+#endif
+
 }
+
+#ifdef TCPSERVER
+void tcpServerLoop() {
+  int i;
+  char c;
+  if (tcpServer.hasClient()) {
+    for (i = 0; i < MAX_SRV_CLIENTS; i++) {
+      //find free/disconnected spot
+      if (!tcpServerClients[i] || !tcpServerClients[i].connected()) {
+        if (tcpServerClients[i]) tcpServerClients[i].stop();
+        tcpServerClients[i] = tcpServer.available();
+        continue;
+      }
+    }
+    //no free/disconnected spot so reject
+    WiFiClient tcpServerClient = tcpServer.available();
+    tcpServerClient.stop();
+  }
+
+  for (int i = 0; i < MAX_SRV_CLIENTS; i++) {
+    if (tcpServerClients[i] && tcpServerClients[i].connected()) {
+      while (tcpServerClients[i].available()) {
+        Serial.print((char)tcpServerClients[i].read());
+      }
+    }
+  }
+
+  if (Serial.available()) {
+    c = Serial.read();
+    for (int i = 0; i < MAX_SRV_CLIENTS; i++) {
+      if (tcpServerClients[i] && tcpServerClients[i].connected()) {
+        tcpServerClients[i].write(c);
+      }
+    }
+  }
+}
+
+void tcpServerWrite(char *buf, uint16_t len) {
+  for (int i = 0; i < MAX_SRV_CLIENTS; i++) {
+    if (tcpServerClients[i] && tcpServerClients[i].connected()) {
+      tcpServerClients[i].write(buf,len);
+    }
+  }
+}
+
+#endif
+  
 
 void loop(void) {
   char line[40];
   httpServer.handleClient();
   webSocketServer.loop();
+  tcpServerLoop();
 
   if (millis() > heartbeatTimeout) {
     digitalWrite(LED,!digitalRead(LED));
@@ -210,5 +276,6 @@ void loop(void) {
   }
 
   ESP.wdtFeed(); 
+
   yield();
 }
