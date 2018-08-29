@@ -13,12 +13,14 @@
   for file in `ls -A1`; do echo $file;curl -F "file=@$PWD/$file" myLoc.local/edit; done
 */
 
-#define LOCATIONLEN 20
+#define NAMELEN 20
+#define LABELLEN 50
 #define LED 2
 
-char location[LOCATIONLEN];
-uint32_t timeout;
-uint32_t heartbeat;
+char name[NAMELEN];
+char label[LABELLEN];
+uint32_t heartbeatTimeout;
+uint32_t heartbeat; // this is heartbeat interval in mS
 
 ESP8266WebServer httpServer(80);
 WebSocketsServer webSocketServer = WebSocketsServer(81);
@@ -84,16 +86,25 @@ void handleStatus() {
 }
 
 void configLoad() {
-  StaticJsonDocument<512> doc;
+  StaticJsonDocument<1024> doc;
   File file = SPIFFS.open("/config.json", "r");
   DeserializationError error = deserializeJson(doc, file);
   if (error) {
     Serial.println(F("Failed to read file, using default configuration"));
   } else {
     JsonObject config = doc.as<JsonObject>();
-    heartbeat = config["heartbeat"];
+    strlcpy(name,config["name"] | "myName", NAMELEN);
+    Serial.print("name:      ");
+    Serial.println(name);
+
+    strlcpy(label,config["label"] | "myLabel", LABELLEN);
+    Serial.print("label:     ");
+    Serial.println(label);
+
+    heartbeat = config["heartbeat"] | 1001;
     Serial.print("heartbeat: ");
     Serial.println(heartbeat);
+
     file.close();
   }
 }
@@ -122,30 +133,37 @@ void setup(void) {
   Serial.println("\nESP8266Template begin");
   pinMode(LED, OUTPUT);
 
-  /* default values, updated by config.json parsing */
-  heartbeat = 1000;
-  strcpy(location,"myLoc");
+  fsSetup();
+  Serial.println("filesystem started");
 
+  /* default values, updated by config.json parsing */
+  heartbeat = 1001;
+  strcpy(name,"myLoc");
+
+  configLoad();
 
   // wifiManager.resetSettings();
-  wifiManager.autoConnect(location);
+  wifiManager.autoConnect(name);
 
   httpServer.on("/status", HTTP_GET, handleStatus );
   httpServer.on("/reset", []() {
-    httpServer.send(200, "text/plain", "reseting config\n");
+    httpServer.send(200, "text/plain", "reseting wifi settings\n");
     wifiManager.resetSettings();
   });
   httpServer.on("/reboot", []() {
     httpServer.send(200, "text/plain", "rebooting\n");
+    delay(1000);
     ESP.reset();
   });
   httpServer.on("/reload", []() {
     httpServer.send(200, "text/plain", "reloading\n");
     configLoad();
   });
+  httpServer.on("/heartbeat", []() {
+    httpServer.send(200, "text/plain", "heartbeat set\n");
+    heartbeat = (httpServer.arg("value")).toInt();
+  });
 
-  fsSetup();
-  Serial.println("filesystem started");
 
   httpUpdater.setup(&httpServer, update_path);
   httpServer.begin();
@@ -154,24 +172,23 @@ void setup(void) {
   Serial.println("HTTP server started");
   Serial.println("HTTP updater started");
 
-  if (MDNS.begin(location)) {
+  if (MDNS.begin(name)) {
       Serial.print ("MDNS responder started http://");
-      Serial.print(location);
+      Serial.print(name);
       Serial.println(".local");
   }
 
   webSocketServer.begin();
   webSocketServer.onEvent(webSocketEvent);
   Serial.println("WebSocketServer started");
-  configLoad();
 }
 
 void loop(void) {
+  char line[40];
   httpServer.handleClient();
   webSocketServer.loop();
 
-  if (millis() > timeout) {
-    char line[20];
+  if (millis() > heartbeatTimeout) {
     digitalWrite(LED,!digitalRead(LED));
 
     sprintf(line,"uptime:%d",millis()/25);
@@ -180,7 +197,16 @@ void loop(void) {
     sprintf(line,"led:%d",!digitalRead(LED));
     webSocketServer.broadcastTXT(line,strlen(line));
 
-    timeout = millis() + heartbeat;
+    sprintf(line,"name:%s",name);
+    webSocketServer.broadcastTXT(line,strlen(line));
+
+    sprintf(line,"label:%s",label);
+    webSocketServer.broadcastTXT(line,strlen(line));
+
+    sprintf(line,"uptime:%d",millis()/25);
+    webSocketServer.broadcastTXT(line,strlen(line));
+
+    heartbeatTimeout = millis() + heartbeat;
   }
 
   ESP.wdtFeed(); 

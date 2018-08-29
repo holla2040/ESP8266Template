@@ -42,6 +42,12 @@
           case "uptime":
             uptime.innerHTML = value;
             break;
+          case "name":
+            nameid.innerHTML = value;
+            break;
+          case "label":
+            label.innerHTML = value;
+            break;
         };
       };
     };
@@ -113,7 +119,9 @@
   </script>
 </head>
 <body id="index" style="margin:0; padding:0;" onload="onBodyLoad()">
- <pre> uptime: <span id="uptime">???</span>
+ <pre> name:   <span id="nameid">???</span>
+ label:  <span id="label">???</span>
+ uptime: <span id="uptime">???</span>
  led:    <span id="led">???</span></pre>
   <div id="controls" style="display: block; border: 1px solid rgb(68, 68, 68); padding: 5px; margin: 5px; width: 362px; background-color: rgb(238, 238, 238);">
     <label>Period (ms):</label>

@@ -1,5 +1,1 @@
-{
- name: "test",
- label: "testl",
- heartbeat: 1000
-}
+{"name":"esp8266","label":"testl","heartbeat":1000}

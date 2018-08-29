@@ -11,3 +11,9 @@ Supports
 * ArduinoJson
 * config.json parsing
 * index.htm has ajax and websocket example code
+
+Sample URLs (also look at the curl make targets)
+* status query,http://esp8266.local/status
+* reset wifi manager, http://esp8266.local/reset
+* reboot, http://esp8266.local/reboot
+* changing runtime hearbeat interval, http://esp8266.local/heartbeat?value=50
