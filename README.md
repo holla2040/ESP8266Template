@@ -11,6 +11,7 @@ Supports
 * ArduinoJson
 * config.json parsing
 * index.htm has ajax and websocket example code
+* option compile of TCP Socket - Serial Port bridging
 
 Sample URLs (also look at the curl make targets)
 * status query,http://esp8266.local/status
