@@ -7,6 +7,13 @@
 #include <EEPROM.h>
 #include <ArduinoJson.h>
 
+
+#define ALEXA
+#define TCPSERVER
+#define WEBSOCKETSERVER
+
+
+
 /*
   upload the contents of the data folder with MkSPIFFS Tool ("ESP8266 Sketch Data Upload" in Tools menu in Arduino IDE)
   or you can upload the contents of a folder if you CD in that folder and run the following command:
@@ -14,7 +21,6 @@
 */
 
 // comment to disable TCP Socket Server,  socat TCP:office.local:23 -,raw,echo=0
-#define TCPSERVER
 #define MAX_SRV_CLIENTS 2
 #define TCPSERVERPORT 23
 
@@ -28,18 +34,28 @@ uint32_t heartbeatTimeout;
 uint32_t heartbeat; // this is heartbeat interval in mS
 
 ESP8266WebServer httpServer(80);
+
+#ifdef WEBSOCKETSERVER
 WebSocketsServer webSocketServer = WebSocketsServer(81);
+#endif
 
 #ifdef TCPSERVER
 WiFiServer tcpServer(TCPSERVERPORT);
 WiFiClient tcpServerClients[MAX_SRV_CLIENTS];
 #endif
 
+#ifdef ALEXA
+#include "./fauxmoESP.h"
+fauxmoESP alexa;
+#endif
+
+
 ESP8266HTTPUpdateServer httpUpdater;
 const char *update_path = "/upload";
 WiFiManager wifiManager;
 #include "fs.h"
 
+#ifdef WEBSOCKETSERVER
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
   Serial.printf("webSocketEvent(%d, %d, ...)\r\n", num, type);
   switch(type) {
@@ -82,6 +98,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
       break;
   }
 }
+#endif
 
 
 //get heap status, analog input value and all GPIO statuses in one json call
@@ -188,15 +205,30 @@ void setup(void) {
       Serial.println(".local");
   }
 
+#ifdef WEBSOCKETSERVER
   webSocketServer.begin();
   webSocketServer.onEvent(webSocketEvent);
   Serial.println("WebSocketServer started");
+#endif
 
 #ifdef TCPSERVER
   tcpServer.setNoDelay(true);
   tcpServer.begin();
   Serial.print("tcpServer started on port ");
   Serial.println(TCPSERVERPORT);
+#endif
+
+#ifdef ALEXA
+  alexa.enable(true);
+  alexa.enable(false);
+  alexa.enable(true);
+  alexa.addDevice("light a"); 
+  alexa.addDevice("light b"); 
+  alexa.addDevice("light c"); 
+  alexa.onSetState([](unsigned char device_id, const char * device_name, bool state, unsigned char value) {
+    Serial.printf("[MAIN] Device #%d (%s) state: %s value: %d\n", device_id, device_name, state ? "ON" : "OFF", value);
+    digitalWrite(LED, !state);
+  });
 #endif
 
 }
@@ -250,27 +282,47 @@ void tcpServerWrite(char *buf, uint16_t len) {
 
 void loop(void) {
   char line[40];
-  httpServer.handleClient();
+//  httpServer.handleClient();
+
+#ifdef WEBSOCKETSERVER
   webSocketServer.loop();
+#endif 
+
+#ifdef TCPSERVER
   tcpServerLoop();
+#endif
+
+#ifdef ALEXA
+  alexa.handle();
+#endif
 
   if (millis() > heartbeatTimeout) {
     digitalWrite(LED,!digitalRead(LED));
 
     sprintf(line,"uptime:%d",millis()/25);
+#ifdef WEBSOCKETSERVER
     webSocketServer.broadcastTXT(line,strlen(line));
+#endif
 
     sprintf(line,"led:%d",!digitalRead(LED));
+#ifdef WEBSOCKETSERVER
     webSocketServer.broadcastTXT(line,strlen(line));
+#endif
 
     sprintf(line,"name:%s",name);
+#ifdef WEBSOCKETSERVER
     webSocketServer.broadcastTXT(line,strlen(line));
+#endif
 
     sprintf(line,"label:%s",label);
+#ifdef WEBSOCKETSERVER
     webSocketServer.broadcastTXT(line,strlen(line));
+#endif
 
     sprintf(line,"uptime:%d",millis()/25);
+#ifdef WEBSOCKETSERVER
     webSocketServer.broadcastTXT(line,strlen(line));
+#endif
 
     heartbeatTimeout = millis() + heartbeat;
   }

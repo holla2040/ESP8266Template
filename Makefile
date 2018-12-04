@@ -24,7 +24,6 @@ bin:
 	${arduinodir}/arduino-builder -compile -logger=machine -hardware ${arduinodir}/hardware -hardware ${arduinosdir15}/packages -hardware ${arduinosketch}/hardware -tools ${arduinodir}/tools-builder -tools ${arduinodir}/hardware/tools/avr -tools ${arduinosdir15}/packages -built-in-libraries ${arduinodir}/libraries -libraries ${arduinosketch}/libraries -fqbn=esp8266:esp8266:d1_mini:CpuFrequency=80,VTable=flash,FlashSize=4M1M,LwIPVariant=v2mss536,Debug=Disabled,DebugLevel=None____,FlashErase=none,UploadSpeed=921600 -ide-version=10806 -build-path /tmp/arduino_build -warnings=none -build-cache /tmp/arduino_cache -prefs=build.warn_data_percentage=75 -prefs=runtime.tools.mkspiffs.path=${arduinosdir15}/packages/esp8266/tools/mkspiffs/0.2.0 -prefs=runtime.tools.esptool.path=${arduinosdir15}/packages/esp8266/tools/esptool/0.4.13 -prefs=runtime.tools.xtensa-lx106-elf-gcc.path=${arduinosdir15}/packages/esp8266/tools/xtensa-lx106-elf-gcc/1.20.0-26-gb404fb9-2 -verbose ./$(ino)
 
 
-
 run: bin
 	/home/holla/.arduino15/packages/esp8266/tools/esptool/0.4.13/esptool -vv -cd nodemcu -cb 921600 -cp $(port) -ca 0x00000 -cf /tmp/arduino_build/$(ino).bin 
 
