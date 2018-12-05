@@ -7,12 +7,14 @@
 #include <EEPROM.h>
 #include <ArduinoJson.h>
 
+/* todo
+  need to ditch these functionality defines and 'enable' them in the config file
+*/
+
 
 #define ALEXA
 #define TCPSERVER
 #define WEBSOCKETSERVER
-
-
 
 /*
   upload the contents of the data folder with MkSPIFFS Tool ("ESP8266 Sketch Data Upload" in Tools menu in Arduino IDE)
@@ -21,7 +23,7 @@
 */
 
 // comment to disable TCP Socket Server,  socat TCP:office.local:23 -,raw,echo=0
-#define MAX_SRV_CLIENTS 2
+#define MAX_SRV_CLIENTS 4
 #define TCPSERVERPORT 23
 
 #define NAMELEN 20
@@ -45,7 +47,7 @@ WiFiClient tcpServerClients[MAX_SRV_CLIENTS];
 #endif
 
 #ifdef ALEXA
-#include "./fauxmoESP.h"
+#include "fauxmoESP.h"
 fauxmoESP alexa;
 #endif
 
@@ -222,9 +224,9 @@ void setup(void) {
   alexa.enable(true);
   alexa.enable(false);
   alexa.enable(true);
-  alexa.addDevice("light a"); 
-  alexa.addDevice("light b"); 
-  alexa.addDevice("light c"); 
+  alexa.addDevice("a"); 
+  alexa.addDevice("b"); 
+  alexa.addDevice("c"); 
   alexa.onSetState([](unsigned char device_id, const char * device_name, bool state, unsigned char value) {
     Serial.printf("[MAIN] Device #%d (%s) state: %s value: %d\n", device_id, device_name, state ? "ON" : "OFF", value);
     digitalWrite(LED, !state);
@@ -282,7 +284,7 @@ void tcpServerWrite(char *buf, uint16_t len) {
 
 void loop(void) {
   char line[40];
-//  httpServer.handleClient();
+  httpServer.handleClient();
 
 #ifdef WEBSOCKETSERVER
   webSocketServer.loop();
