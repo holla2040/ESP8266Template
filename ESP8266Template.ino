@@ -224,9 +224,9 @@ void setup(void) {
   alexa.enable(true);
   alexa.enable(false);
   alexa.enable(true);
-  alexa.addDevice("a"); 
-  alexa.addDevice("b"); 
-  alexa.addDevice("c"); 
+  alexa.addDevice("alpha"); 
+  alexa.addDevice("beta"); 
+  alexa.addDevice("charlie"); 
   alexa.onSetState([](unsigned char device_id, const char * device_name, bool state, unsigned char value) {
     Serial.printf("[MAIN] Device #%d (%s) state: %s value: %d\n", device_id, device_name, state ? "ON" : "OFF", value);
     digitalWrite(LED, !state);
