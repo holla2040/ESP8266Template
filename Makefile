@@ -12,7 +12,10 @@
 # make reboot name=esp8266
 
 ino = $(wildcard *.ino)
-name = 192.168.0.114
+ifeq ($(name),)
+name := 192.168.0.114
+endif
+
 port = /dev/ttyUSB0
 arduinodir = /home/holla/arduino
 arduinosketch = /home/holla/Arduino
@@ -32,8 +35,8 @@ flash:
 	@- pkill -9 -f sleep
 
 files:
-	@name=${name} ./transferdata.sh
 	@echo ${name}
+	name=${name} ./transferdata.sh
 	curl http://${name}/reload
 
 reload:
