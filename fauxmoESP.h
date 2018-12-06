@@ -28,8 +28,8 @@ THE SOFTWARE.
 
 #pragma once
 
-#define DEBUG_FAUXMO Serial
-#define DEBUG_FAUXMO_VERBOSE true
+// #define DEBUG_FAUXMO Serial
+// #define DEBUG_FAUXMO_VERBOSE true
 
 
 #define UDP_MULTICAST_IP        IPAddress(239,255,255,250)

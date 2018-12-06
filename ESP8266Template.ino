@@ -36,6 +36,8 @@ uint32_t heartbeatTimeout;
 uint32_t heartbeat; // this is heartbeat interval in mS
 
 ESP8266WebServer httpServer(80);
+StaticJsonDocument<1024> doc;
+JsonObject config;
 
 #ifdef WEBSOCKETSERVER
 WebSocketsServer webSocketServer = WebSocketsServer(81);
@@ -115,13 +117,12 @@ void handleStatus() {
 }
 
 void configLoad() {
-  StaticJsonDocument<1024> doc;
   File file = SPIFFS.open("/config.json", "r");
   DeserializationError error = deserializeJson(doc, file);
   if (error) {
     Serial.println(F("Failed to read file, using default configuration"));
   } else {
-    JsonObject config = doc.as<JsonObject>();
+    config = doc.as<JsonObject>();
     strlcpy(name,config["name"] | "myName", NAMELEN);
     Serial.print("name:      ");
     Serial.println(name);
@@ -182,7 +183,7 @@ void setup(void) {
   httpServer.on("/reboot", []() {
     httpServer.send(200, "text/plain", "rebooting\n");
     delay(1000);
-    ESP.reset();
+    ESP.restart();
   });
   httpServer.on("/reload", []() {
     httpServer.send(200, "text/plain", "reloading\n");
@@ -224,9 +225,17 @@ void setup(void) {
   alexa.enable(true);
   alexa.enable(false);
   alexa.enable(true);
-  alexa.addDevice("alpha"); 
-  alexa.addDevice("beta"); 
-  alexa.addDevice("charlie"); 
+
+  Serial.print("alexa devices '");
+  // from https://arduinojson.org/v6/api/jsonarray/
+  for(JsonVariant v : config["alexa"].as<JsonArray>()) {
+    Serial.print(v.as<String>());
+    Serial.print("' ");
+    (v.as<String>()).toCharArray(name,19);
+    alexa.addDevice(name);
+  }
+  Serial.println("started");
+
   alexa.onSetState([](unsigned char device_id, const char * device_name, bool state, unsigned char value) {
     Serial.printf("[MAIN] Device #%d (%s) state: %s value: %d\n", device_id, device_name, state ? "ON" : "OFF", value);
     digitalWrite(LED, !state);

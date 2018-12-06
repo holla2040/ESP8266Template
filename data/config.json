@@ -1,1 +1,5 @@
-{"name":"office","label":"testl","heartbeat":1000}
+{"name":"office",
+ "label":"testl",
+ "heartbeat":1000,
+ "alexa":["Robert","Jimmy","John Paul","Bonzo"]
+}
