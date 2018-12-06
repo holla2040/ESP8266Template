@@ -222,6 +222,7 @@ void setup(void) {
 #endif
 
 #ifdef ALEXA
+  char devname[NAMELEN];
   alexa.enable(true);
   alexa.enable(false);
   alexa.enable(true);
@@ -231,8 +232,8 @@ void setup(void) {
   for(JsonVariant v : config["alexa"].as<JsonArray>()) {
     Serial.print(v.as<String>());
     Serial.print("' ");
-    (v.as<String>()).toCharArray(name,19);
-    alexa.addDevice(name);
+    (v.as<String>()).toCharArray(devname,NAMELEN-1);
+    alexa.addDevice(devname);
   }
   Serial.println("started");
 
