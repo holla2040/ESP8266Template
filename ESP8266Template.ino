@@ -311,28 +311,17 @@ void loop(void) {
   if (millis() > heartbeatTimeout) {
     digitalWrite(LED,!digitalRead(LED));
 
-    sprintf(line,"uptime:%d",millis()/25);
 #ifdef WEBSOCKETSERVER
+    sprintf(line,"uptime:%d",millis()/1000);
     webSocketServer.broadcastTXT(line,strlen(line));
-#endif
 
     sprintf(line,"led:%d",!digitalRead(LED));
-#ifdef WEBSOCKETSERVER
     webSocketServer.broadcastTXT(line,strlen(line));
-#endif
 
     sprintf(line,"name:%s",name);
-#ifdef WEBSOCKETSERVER
     webSocketServer.broadcastTXT(line,strlen(line));
-#endif
 
     sprintf(line,"label:%s",label);
-#ifdef WEBSOCKETSERVER
-    webSocketServer.broadcastTXT(line,strlen(line));
-#endif
-
-    sprintf(line,"uptime:%d",millis()/25);
-#ifdef WEBSOCKETSERVER
     webSocketServer.broadcastTXT(line,strlen(line));
 #endif
 
