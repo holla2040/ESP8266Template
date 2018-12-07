@@ -13,7 +13,6 @@
 
 
 #define ALEXA
-#define TCPSERVER
 #define WEBSOCKETSERVER
 
 /*
@@ -24,7 +23,6 @@
 
 // comment to disable TCP Socket Server,  socat TCP:office.local:23 -,raw,echo=0
 #define MAX_SRV_CLIENTS 4
-#define TCPSERVERPORT 23
 
 #define NAMELEN 20
 #define LABELLEN 50
@@ -43,10 +41,8 @@ JsonObject config;
 WebSocketsServer webSocketServer = WebSocketsServer(81);
 #endif
 
-#ifdef TCPSERVER
-WiFiServer tcpServer(TCPSERVERPORT);
+WiFiServer *tcpServer;
 WiFiClient tcpServerClients[MAX_SRV_CLIENTS];
-#endif
 
 #ifdef ALEXA
 #include "fauxmoESP.h"
@@ -214,15 +210,14 @@ void setup(void) {
   Serial.println("WebSocketServer started");
 #endif
 
-#ifdef TCPSERVER
   if (config["tcpserver"]["enabled"]) {
     int p = config["tcpserver"]["port"];
-    tcpServer.setNoDelay(true);
-    tcpServer.begin(p);
+    tcpServer = new WiFiServer(p);
+    tcpServer->setNoDelay(true);
+    tcpServer->begin(p);
     Serial.print("tcpServer started on port ");
     Serial.println(p);
   }
-#endif
 
 #ifdef ALEXA
   if (config["alexa"]["enabled"]) {
@@ -251,21 +246,21 @@ void setup(void) {
 
 }
 
-#ifdef TCPSERVER
 void tcpServerLoop() {
   int i;
   char c;
-  if (tcpServer.hasClient()) {
+
+  if (tcpServer->hasClient()) {
     for (i = 0; i < MAX_SRV_CLIENTS; i++) {
       //find free/disconnected spot
       if (!tcpServerClients[i] || !tcpServerClients[i].connected()) {
         if (tcpServerClients[i]) tcpServerClients[i].stop();
-        tcpServerClients[i] = tcpServer.available();
+        tcpServerClients[i] = tcpServer->available();
         continue;
       }
     }
     //no free/disconnected spot so reject
-    WiFiClient tcpServerClient = tcpServer.available();
+    WiFiClient tcpServerClient = tcpServer->available();
     tcpServerClient.stop();
   }
 
@@ -295,8 +290,6 @@ void tcpServerWrite(char *buf, uint16_t len) {
   }
 }
 
-#endif
-  
 
 void loop(void) {
   char line[40];
@@ -306,9 +299,7 @@ void loop(void) {
   webSocketServer.loop();
 #endif 
 
-#ifdef TCPSERVER
-  tcpServerLoop();
-#endif
+  if (config["tcpserver"]["enabled"]) tcpServerLoop();
 
 #ifdef ALEXA
   alexa.handle();
