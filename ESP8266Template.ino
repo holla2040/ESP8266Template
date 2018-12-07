@@ -13,7 +13,6 @@
 
 
 #define ALEXA
-#define WEBSOCKETSERVER
 
 /*
   upload the contents of the data folder with MkSPIFFS Tool ("ESP8266 Sketch Data Upload" in Tools menu in Arduino IDE)
@@ -37,9 +36,7 @@ ESP8266WebServer httpServer(80);
 StaticJsonDocument<1024> doc;
 JsonObject config;
 
-#ifdef WEBSOCKETSERVER
-WebSocketsServer webSocketServer = WebSocketsServer(81);
-#endif
+WebSocketsServer *webSocketServer;
 
 WiFiServer *tcpServer;
 WiFiClient tcpServerClients[MAX_SRV_CLIENTS];
@@ -55,7 +52,6 @@ const char *update_path = "/upload";
 WiFiManager wifiManager;
 #include "fs.h"
 
-#ifdef WEBSOCKETSERVER
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
   Serial.printf("webSocketEvent(%d, %d, ...)\r\n", num, type);
   switch(type) {
@@ -64,7 +60,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
       break;
     case WStype_CONNECTED:
       {
-        IPAddress ip = webSocketServer.remoteIP(num);
+        IPAddress ip = webSocketServer->remoteIP(num);
         Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\r\n", num, ip[0], ip[1], ip[2], ip[3], payload);
       }
       break;
@@ -84,21 +80,20 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 */
 
       // send data to all connected clients
-      webSocketServer.broadcastTXT(payload, length);
+      webSocketServer->broadcastTXT(payload, length);
       break;
     case WStype_BIN:
       Serial.printf("[%u] get binary length: %u\r\n", num, length);
       hexdump(payload, length);
 
       // echo data back to browser
-      webSocketServer.sendBIN(num, payload, length);
+      webSocketServer->sendBIN(num, payload, length);
       break;
     default:
       Serial.printf("Invalid WStype [%d]\r\n", type);
       break;
   }
 }
-#endif
 
 
 //get heap status, analog input value and all GPIO statuses in one json call
@@ -204,11 +199,12 @@ void setup(void) {
       Serial.println(".local");
   }
 
-#ifdef WEBSOCKETSERVER
-  webSocketServer.begin();
-  webSocketServer.onEvent(webSocketEvent);
-  Serial.println("WebSocketServer started");
-#endif
+  if (config["websocketserver"]["enabled"]) {
+    webSocketServer = new WebSocketsServer(81);
+    webSocketServer->begin();
+    webSocketServer->onEvent(webSocketEvent);
+    Serial.println("WebSocketServer started");
+  }
 
   if (config["tcpserver"]["enabled"]) {
     int p = config["tcpserver"]["port"];
@@ -295,9 +291,7 @@ void loop(void) {
   char line[40];
   httpServer.handleClient();
 
-#ifdef WEBSOCKETSERVER
-  webSocketServer.loop();
-#endif 
+  if (config["websocketserver"]["enabled"]) webSocketServer->loop();
 
   if (config["tcpserver"]["enabled"]) tcpServerLoop();
 
@@ -308,19 +302,19 @@ void loop(void) {
   if (millis() > heartbeatTimeout) {
     digitalWrite(LED,!digitalRead(LED));
 
-#ifdef WEBSOCKETSERVER
+  if (config["websocketserver"]["enabled"]) {
     sprintf(line,"uptime:%d",millis()/1000);
-    webSocketServer.broadcastTXT(line,strlen(line));
+    webSocketServer->broadcastTXT(line,strlen(line));
 
     sprintf(line,"led:%d",!digitalRead(LED));
-    webSocketServer.broadcastTXT(line,strlen(line));
+    webSocketServer->broadcastTXT(line,strlen(line));
 
     sprintf(line,"name:%s",name);
-    webSocketServer.broadcastTXT(line,strlen(line));
+    webSocketServer->broadcastTXT(line,strlen(line));
 
     sprintf(line,"label:%s",label);
-    webSocketServer.broadcastTXT(line,strlen(line));
-#endif
+    webSocketServer->broadcastTXT(line,strlen(line));
+  }
 
     heartbeatTimeout = millis() + heartbeat;
   }

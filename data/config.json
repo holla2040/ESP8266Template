@@ -8,6 +8,8 @@
  "tcpserver":{
     "enabled":1,
     "port":23
+  },
+  "websocketserver":{
+    "enabled":1
   }
- 
 }
