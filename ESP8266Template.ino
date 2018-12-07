@@ -215,32 +215,38 @@ void setup(void) {
 #endif
 
 #ifdef TCPSERVER
-  tcpServer.setNoDelay(true);
-  tcpServer.begin();
-  Serial.print("tcpServer started on port ");
-  Serial.println(TCPSERVERPORT);
+  if (config["tcpserver"]["enabled"]) {
+    int p = config["tcpserver"]["port"];
+    tcpServer.setNoDelay(true);
+    tcpServer.begin(p);
+    Serial.print("tcpServer started on port ");
+    Serial.println(p);
+  }
 #endif
 
 #ifdef ALEXA
-  char devname[NAMELEN];
-  alexa.enable(true);
-  alexa.enable(false);
-  alexa.enable(true);
+  if (config["alexa"]["enabled"]) {
+    char devname[NAMELEN];
+    alexa.enable(true);
+    alexa.enable(false);
+    alexa.enable(true);
 
-  Serial.print("alexa devices '");
-  // from https://arduinojson.org/v6/api/jsonarray/
-  for(JsonVariant v : config["alexa"].as<JsonArray>()) {
-    Serial.print(v.as<String>());
-    Serial.print("' ");
-    (v.as<String>()).toCharArray(devname,NAMELEN-1);
-    alexa.addDevice(devname);
+    Serial.print("alexa devices ");
+    // from https://arduinojson.org/v6/api/jsonarray/
+    for(JsonVariant v : config["alexa"]["devices"].as<JsonArray>()) {
+      Serial.print("'");
+      Serial.print(v.as<String>());
+      Serial.print("' ");
+      (v.as<String>()).toCharArray(devname,NAMELEN-1);
+      alexa.addDevice(devname);
+    }
+    Serial.println("started");
+
+    alexa.onSetState([](unsigned char device_id, const char * device_name, bool state, unsigned char value) {
+      Serial.printf("[MAIN] Device #%d (%s) state: %s value: %d\n", device_id, device_name, state ? "ON" : "OFF", value);
+      digitalWrite(LED, !state);
+    });
   }
-  Serial.println("started");
-
-  alexa.onSetState([](unsigned char device_id, const char * device_name, bool state, unsigned char value) {
-    Serial.printf("[MAIN] Device #%d (%s) state: %s value: %d\n", device_id, device_name, state ? "ON" : "OFF", value);
-    digitalWrite(LED, !state);
-  });
 #endif
 
 }

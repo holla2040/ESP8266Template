@@ -12,11 +12,15 @@
 # make reboot name=esp8266
 
 ino = $(wildcard *.ino)
+
+ifeq ($(port),)
+port := /dev/ttyUSB0
+endif
+
 ifeq ($(name),)
 name := 192.168.0.114
 endif
 
-port = /dev/ttyUSB0
 arduinodir = /home/holla/arduino
 arduinosketch = /home/holla/Arduino
 arduinosdir15 = /home/holla/.arduino15
@@ -73,3 +77,6 @@ config:
 clean:
 	rm -rf /tmp/arduino_build*
 	rm -rf /tmp/arduino_cache*
+
+console:
+	@while [ 1 ]; do microcom -p ${port} -s 115200;data;sleep 50000;done

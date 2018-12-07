@@ -1,5 +1,13 @@
 {"name":"office",
  "label":"testl",
  "heartbeat":1000,
- "alexa":["Robert","Jimmy","John Paul","Bonzo"]
+ "alexa":{
+    "enabled":1,
+    "devices":["Robert","Jimmy","John Paul","Bonzo"]
+  },
+ "tcpserver":{
+    "enabled":1,
+    "port":23
+  }
+ 
 }
