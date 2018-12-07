@@ -6,13 +6,15 @@
 #include <WiFiManager.h>        //https://github.com/tzapu/WiFiManager
 #include <EEPROM.h>
 #include <ArduinoJson.h>
+#include "fauxmoESP.h"
+
+boolean tcpserverEnabled,websocketserverEnabled,alexaEnabled;
 
 /* todo
   need to ditch these functionality defines and 'enable' them in the config file
 */
 
 
-#define ALEXA
 
 /*
   upload the contents of the data folder with MkSPIFFS Tool ("ESP8266 Sketch Data Upload" in Tools menu in Arduino IDE)
@@ -41,10 +43,7 @@ WebSocketsServer *webSocketServer;
 WiFiServer *tcpServer;
 WiFiClient tcpServerClients[MAX_SRV_CLIENTS];
 
-#ifdef ALEXA
-#include "fauxmoESP.h"
-fauxmoESP alexa;
-#endif
+fauxmoESP *alexa;
 
 
 ESP8266HTTPUpdateServer httpUpdater;
@@ -126,6 +125,10 @@ void configLoad() {
     Serial.print("heartbeat: ");
     Serial.println(heartbeat);
 
+    tcpserverEnabled        = config["tcpserver"]["enabled"];
+    websocketserverEnabled  = config["websocketserver"]["enabled"];
+    alexaEnabled            = config["alexa"]["enabled"];
+
     file.close();
   }
 }
@@ -199,14 +202,14 @@ void setup(void) {
       Serial.println(".local");
   }
 
-  if (config["websocketserver"]["enabled"]) {
+  if (websocketserverEnabled) {
     webSocketServer = new WebSocketsServer(81);
     webSocketServer->begin();
     webSocketServer->onEvent(webSocketEvent);
     Serial.println("WebSocketServer started");
   }
 
-  if (config["tcpserver"]["enabled"]) {
+  if (tcpserverEnabled) {
     int p = config["tcpserver"]["port"];
     tcpServer = new WiFiServer(p);
     tcpServer->setNoDelay(true);
@@ -215,12 +218,12 @@ void setup(void) {
     Serial.println(p);
   }
 
-#ifdef ALEXA
-  if (config["alexa"]["enabled"]) {
+  if (alexaEnabled) {
     char devname[NAMELEN];
-    alexa.enable(true);
-    alexa.enable(false);
-    alexa.enable(true);
+    alexa = new fauxmoESP();
+    alexa->enable(true);
+    alexa->enable(false);
+    alexa->enable(true);
 
     Serial.print("alexa devices ");
     // from https://arduinojson.org/v6/api/jsonarray/
@@ -229,16 +232,15 @@ void setup(void) {
       Serial.print(v.as<String>());
       Serial.print("' ");
       (v.as<String>()).toCharArray(devname,NAMELEN-1);
-      alexa.addDevice(devname);
+      alexa->addDevice(devname);
     }
     Serial.println("started");
 
-    alexa.onSetState([](unsigned char device_id, const char * device_name, bool state, unsigned char value) {
+    alexa->onSetState([](unsigned char device_id, const char * device_name, bool state, unsigned char value) {
       Serial.printf("[MAIN] Device #%d (%s) state: %s value: %d\n", device_id, device_name, state ? "ON" : "OFF", value);
       digitalWrite(LED, !state);
     });
   }
-#endif
 
 }
 
@@ -288,21 +290,18 @@ void tcpServerWrite(char *buf, uint16_t len) {
 
 
 void loop(void) {
-  char line[40];
   httpServer.handleClient();
 
-  if (config["websocketserver"]["enabled"]) webSocketServer->loop();
-
-  if (config["tcpserver"]["enabled"]) tcpServerLoop();
-
-#ifdef ALEXA
-  alexa.handle();
-#endif
+  if (tcpserverEnabled)       tcpServerLoop();
+  if (alexaEnabled)           alexa->handle();
 
   if (millis() > heartbeatTimeout) {
     digitalWrite(LED,!digitalRead(LED));
+  }
 
-  if (config["websocketserver"]["enabled"]) {
+  if (websocketserverEnabled) {
+    char line[40];
+    webSocketServer->loop();
     sprintf(line,"uptime:%d",millis()/1000);
     webSocketServer->broadcastTXT(line,strlen(line));
 
@@ -314,7 +313,6 @@ void loop(void) {
 
     sprintf(line,"label:%s",label);
     webSocketServer->broadcastTXT(line,strlen(line));
-  }
 
     heartbeatTimeout = millis() + heartbeat;
   }
