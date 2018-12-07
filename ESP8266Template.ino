@@ -8,13 +8,6 @@
 #include <ArduinoJson.h>
 #include "fauxmoESP.h"
 
-boolean tcpserverEnabled,websocketserverEnabled,alexaEnabled;
-
-/* todo
-  need to ditch these functionality defines and 'enable' them in the config file
-*/
-
-
 
 /*
   upload the contents of the data folder with MkSPIFFS Tool ("ESP8266 Sketch Data Upload" in Tools menu in Arduino IDE)
@@ -50,6 +43,8 @@ ESP8266HTTPUpdateServer httpUpdater;
 const char *update_path = "/upload";
 WiFiManager wifiManager;
 #include "fs.h"
+
+boolean tcpserverEnabled,websocketserverEnabled,alexaEnabled;
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
   Serial.printf("webSocketEvent(%d, %d, ...)\r\n", num, type);
