@@ -8,7 +8,6 @@
 #include <ArduinoJson.h>
 #include "fauxmoESP.h"
 
-
 /*
   upload the contents of the data folder with MkSPIFFS Tool ("ESP8266 Sketch Data Upload" in Tools menu in Arduino IDE)
   or you can upload the contents of a folder if you CD in that folder and run the following command:
