@@ -264,9 +264,9 @@ void websocketServerSetup() {
 
 void websocketserverLoop() {
   uint32_t milli = millis();
+  webSocketServer->loop();
   if (milli > websocketTimeout) {
     char line[40];
-    webSocketServer->loop();
     sprintf(line,"uptime:%d",milli/1000);
     webSocketServer->broadcastTXT(line,strlen(line));
 
