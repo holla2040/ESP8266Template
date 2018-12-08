@@ -145,15 +145,16 @@ void tcpServerSetup() {
 void httpServerSetup() {
   httpServer.on("/heartbeat", []() {
     httpServer.send(200, "text/plain", "heartbeat interval set\n");
-    if (httpServer.arg("interval")) {
+    if (httpServer.hasArg("interval")) {
       heartbeatInterval = (httpServer.arg("interval")).toInt();
       if (heartbeatInterval < 1) {
         heartbeatInterval = 10000;
       }
     }
-    if (httpServer.arg("enabled")) {
+    if (httpServer.hasArg("enabled")) {
       heartbeatEnabled = (httpServer.arg("enabled")).toInt();
     }
+    heartbeatTimeout = 0;
   });
 
   httpServer.on("/status", HTTP_GET, handleStatus );

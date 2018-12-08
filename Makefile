@@ -80,3 +80,10 @@ clean:
 
 con:
 	@while [ 1 ]; do microcom -p ${port} -s 115200;data;sleep 50000;done
+
+blinkdisable:
+	curl http://${name}/heartbeat?enabled=0
+
+blinkenable:
+	curl http://${name}/heartbeat?enabled=1
+	
