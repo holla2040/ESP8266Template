@@ -1,6 +1,10 @@
 {"name":"office",
  "label":"testl",
- "heartbeat":1000,
+ "heartbeat":{
+   "enabled":1,
+   "interval":1000,
+   "pin":2
+ },
  "alexa":{
     "enabled":1,
     "devices":["Robert","Jimmy","John Paul","Bonzo"]

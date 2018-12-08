@@ -19,12 +19,12 @@
 
 #define NAMELEN 20
 #define LABELLEN 50
-#define LED 2
 
 char name[NAMELEN];
 char label[LABELLEN];
 uint32_t heartbeatTimeout;
-uint32_t heartbeat; // this is heartbeat interval in mS
+uint8_t  heartbeatPin;
+uint32_t heartbeatInterval; // this is heartbeat interval in mS
 
 ESP8266WebServer httpServer(80);
 StaticJsonDocument<1024> doc;
@@ -43,7 +43,7 @@ const char *update_path = "/upload";
 WiFiManager wifiManager;
 #include "fs.h"
 
-boolean tcpserverEnabled,websocketserverEnabled,alexaEnabled;
+boolean tcpserverEnabled,websocketserverEnabled,alexaEnabled,heartbeatEnabled;
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
   Serial.printf("webSocketEvent(%d, %d, ...)\r\n", num, type);
@@ -115,10 +115,9 @@ void configLoad() {
     Serial.print("label:     ");
     Serial.println(label);
 
-    heartbeat = config["heartbeat"] | 1001;
-    Serial.print("heartbeat: ");
-    Serial.println(heartbeat);
-
+    heartbeatEnabled        = config["heartbeat"]["enabled"];
+    heartbeatInterval       = config["heartbeat"]["interval"];
+    heartbeatPin            = config["heartbeat"]["pin"];
     tcpserverEnabled        = config["tcpserver"]["enabled"];
     websocketserverEnabled  = config["websocketserver"]["enabled"];
     alexaEnabled            = config["alexa"]["enabled"];
@@ -149,14 +148,9 @@ void setup(void) {
   int i;
   Serial.begin(115200);
   Serial.println("\nESP8266Template begin");
-  pinMode(LED, OUTPUT);
 
   fsSetup();
   Serial.println("filesystem started");
-
-  /* default values, updated by config.json parsing */
-  heartbeat = 1001;
-  strcpy(name,"myLoc");
 
   configLoad();
 
@@ -178,8 +172,8 @@ void setup(void) {
     configLoad();
   });
   httpServer.on("/heartbeat", []() {
-    httpServer.send(200, "text/plain", "heartbeat set\n");
-    heartbeat = (httpServer.arg("value")).toInt();
+    httpServer.send(200, "text/plain", "heartbeat interval set\n");
+    heartbeatInterval = (httpServer.arg("interval")).toInt();
   });
 
 
@@ -232,10 +226,13 @@ void setup(void) {
 
     alexa->onSetState([](unsigned char device_id, const char * device_name, bool state, unsigned char value) {
       Serial.printf("[MAIN] Device #%d (%s) state: %s value: %d\n", device_id, device_name, state ? "ON" : "OFF", value);
-      digitalWrite(LED, !state);
+      digitalWrite(heartbeatPin, !state);
     });
   }
 
+  if (heartbeatEnabled) {
+    pinMode(heartbeatPin, OUTPUT);
+  }
 }
 
 void tcpServerLoop() {
@@ -289,8 +286,11 @@ void loop(void) {
   if (tcpserverEnabled)       tcpServerLoop();
   if (alexaEnabled)           alexa->handle();
 
-  if (millis() > heartbeatTimeout) {
-    digitalWrite(LED,!digitalRead(LED));
+  if (heartbeatEnabled) {
+    if (millis() > heartbeatTimeout) {
+      digitalWrite(heartbeatPin,!digitalRead(heartbeatPin));
+      heartbeatTimeout = millis() + heartbeatInterval;
+    }
   }
 
   if (websocketserverEnabled) {
@@ -299,7 +299,7 @@ void loop(void) {
     sprintf(line,"uptime:%d",millis()/1000);
     webSocketServer->broadcastTXT(line,strlen(line));
 
-    sprintf(line,"led:%d",!digitalRead(LED));
+    sprintf(line,"led:%d",!digitalRead(heartbeatPin));
     webSocketServer->broadcastTXT(line,strlen(line));
 
     sprintf(line,"name:%s",name);
@@ -308,7 +308,6 @@ void loop(void) {
     sprintf(line,"label:%s",label);
     webSocketServer->broadcastTXT(line,strlen(line));
 
-    heartbeatTimeout = millis() + heartbeat;
   }
 
   ESP.wdtFeed(); 
