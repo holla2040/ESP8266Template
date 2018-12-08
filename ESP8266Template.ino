@@ -17,6 +17,48 @@
   for file in `ls -A1`; do echo $file;curl -F "file=@$PWD/$file" myLoc.local/edit; done
 */
 
+
+void setup(void) {
+  Serial.begin(115200);
+  Serial.println("\nESP8266Template begin");
+
+  fsSetup();
+  Serial.println("filesystem started");
+
+  configLoad();
+
+  // wifiManager.resetSettings();
+  wifiManager.autoConnect(name);
+
+  httpServerSetup();
+
+  if (MDNS.begin(name)) {
+      Serial.print ("MDNS responder started http://");
+      Serial.print(name);
+      Serial.println(".local");
+  }
+
+  if (tcpServerEnabled)         tcpServerSetup();
+  if (websocketserverEnabled)   websocketServerSetup();
+  if (heartbeatEnabled)         heartbeatSetup(); 
+  if (alexaEnabled)             alexaSetup();
+}
+
+
+void loop(void) {
+  httpServer.handleClient();
+
+  if (tcpServerEnabled)       tcpServerLoop();
+  if (alexaEnabled)           alexaLoop();
+  if (heartbeatEnabled)       heartbeatLoop();
+  if (websocketserverEnabled) websocketserverLoop();
+
+  ESP.wdtFeed(); 
+  yield();
+}
+
+
+/* ---- config code ----------------------------------------------*/
 void configLoad() {
   File file = SPIFFS.open("/config.json", "r");
   DeserializationError error = deserializeJson(doc, file);
@@ -42,45 +84,6 @@ void configLoad() {
 
     file.close();
   }
-}
-
-void setup(void) {
-  Serial.begin(115200);
-  Serial.println("\nESP8266Template begin");
-
-  fsSetup();
-  Serial.println("filesystem started");
-
-  configLoad();
-
-  // wifiManager.resetSettings();
-  wifiManager.autoConnect(name);
-
-  httpServerSetup();
-
-  if (MDNS.begin(name)) {
-      Serial.print ("MDNS responder started http://");
-      Serial.print(name);
-      Serial.println(".local");
-  }
-
-  if (websocketserverEnabled)   websocketServerSetup();
-  if (heartbeatEnabled)         heartbeatSetup(); 
-  if (alexaEnabled)             alexaSetup();
-}
-
-
-
-void loop(void) {
-  httpServer.handleClient();
-
-  if (tcpServerEnabled)       tcpServerLoop();
-  if (alexaEnabled)           alexaLoop();
-  if (heartbeatEnabled)       heartbeatLoop();
-  if (websocketserverEnabled) websocketserverLoop();
-
-  ESP.wdtFeed(); 
-  yield();
 }
 
 

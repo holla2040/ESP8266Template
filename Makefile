@@ -78,5 +78,5 @@ clean:
 	rm -rf /tmp/arduino_build*
 	rm -rf /tmp/arduino_cache*
 
-console:
+con:
 	@while [ 1 ]; do microcom -p ${port} -s 115200;data;sleep 50000;done

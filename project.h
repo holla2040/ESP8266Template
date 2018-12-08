@@ -11,11 +11,13 @@ char label[LABELLEN];
 StaticJsonDocument<1024> doc;
 JsonObject config;
 
+
 ESP8266WebServer httpServer(80);
 void httpServerSetup();
 ESP8266HTTPUpdateServer httpUpdater;
 const char *update_path = "/upload";
 WiFiManager wifiManager;
+void configLoad();
 
 boolean     tcpServerEnabled; 
 #define     MAX_SRV_CLIENTS 4
