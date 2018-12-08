@@ -6,102 +6,16 @@
 #include <WiFiManager.h>        //https://github.com/tzapu/WiFiManager
 #include <EEPROM.h>
 #include <ArduinoJson.h>
+
 #include "fauxmoESP.h"
+#include "project.h"
+#include "fs.h"
 
 /*
   upload the contents of the data folder with MkSPIFFS Tool ("ESP8266 Sketch Data Upload" in Tools menu in Arduino IDE)
   or you can upload the contents of a folder if you CD in that folder and run the following command:
   for file in `ls -A1`; do echo $file;curl -F "file=@$PWD/$file" myLoc.local/edit; done
 */
-
-// comment to disable TCP Socket Server,  socat TCP:office.local:23 -,raw,echo=0
-#define MAX_SRV_CLIENTS 4
-
-#define NAMELEN 20
-#define LABELLEN 50
-
-char name[NAMELEN];
-char label[LABELLEN];
-uint32_t heartbeatTimeout;
-uint8_t  heartbeatPin;
-uint32_t heartbeatInterval; // this is heartbeat interval in mS
-
-uint32_t websocketTimeout;
-uint32_t websocketInterval; 
-
-ESP8266WebServer httpServer(80);
-StaticJsonDocument<1024> doc;
-JsonObject config;
-
-WebSocketsServer *webSocketServer;
-
-WiFiServer *tcpServer;
-WiFiClient tcpServerClients[MAX_SRV_CLIENTS];
-
-fauxmoESP *alexa;
-
-ESP8266HTTPUpdateServer httpUpdater;
-const char *update_path = "/upload";
-WiFiManager wifiManager;
-#include "fs.h"
-
-boolean tcpserverEnabled,websocketserverEnabled,alexaEnabled,heartbeatEnabled;
-
-void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
-  Serial.printf("webSocketEvent(%d, %d, ...)\r\n", num, type);
-  switch(type) {
-    case WStype_DISCONNECTED:
-      Serial.printf("[%u] Disconnected!\r\n", num);
-      break;
-    case WStype_CONNECTED:
-      {
-        IPAddress ip = webSocketServer->remoteIP(num);
-        Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\r\n", num, ip[0], ip[1], ip[2], ip[3], payload);
-        websocketTimeout = millis() + 10;
-      }
-      break;
-    case WStype_TEXT:
-      Serial.printf("[%u] get Text: %s\r\n", num, payload);
-
-/*
-      if (strcmp(LEDON, (const char *)payload) == 0) {
-        writeLED(true);
-      }
-      else if (strcmp(LEDOFF, (const char *)payload) == 0) {
-        writeLED(false);
-      }
-      else {
-        Serial.println("Unknown command");
-      }
-*/
-
-      // send data to all connected clients
-      webSocketServer->broadcastTXT(payload, length);
-      break;
-    case WStype_BIN:
-      Serial.printf("[%u] get binary length: %u\r\n", num, length);
-      hexdump(payload, length);
-
-      // echo data back to browser
-      webSocketServer->sendBIN(num, payload, length);
-      break;
-    default:
-      Serial.printf("Invalid WStype [%d]\r\n", type);
-      break;
-  }
-}
-
-
-//get heap status, analog input value and all GPIO statuses in one json call
-void handleStatus() {
-    String json = "{";
-    json += "\"heap\":" + String(ESP.getFreeHeap());
-    json += ", \"analog\":" + String(analogRead(A0));
-    json += ", \"gpio\":" + String((uint32_t)(((GPI | GPO) & 0xFFFF) | ((GP16I & 0x01) << 16)));
-    json += "}";
-    httpServer.send(200, "text/json", json);
-    json = String();
-}
 
 void configLoad() {
   File file = SPIFFS.open("/config.json", "r");
@@ -121,7 +35,7 @@ void configLoad() {
     heartbeatEnabled        = config["heartbeat"]["enabled"];
     heartbeatInterval       = config["heartbeat"]["interval"] | 1000;
     heartbeatPin            = config["heartbeat"]["pin"];
-    tcpserverEnabled        = config["tcpserver"]["enabled"];
+    tcpServerEnabled        = config["tcpserver"]["enabled"];
     websocketserverEnabled  = config["websocketserver"]["enabled"];
     websocketInterval       = config["websocketserver"]["interval"] | 1000;
     alexaEnabled            = config["alexa"]["enabled"];
@@ -130,26 +44,7 @@ void configLoad() {
   }
 }
 
-void handleNotFound() {
-  String message = "File Not Found\n\n";
-  message += "URI: ";
-  message += httpServer.uri();
-  message += "\nMethod: ";
-  message += (httpServer.method() == HTTP_GET) ? "GET" : "POST";
-  message += "\nArguments: ";
-  message += httpServer.args();
-  message += "\n";
-
-  for (uint8_t i = 0; i < httpServer.args(); i++) {
-    message += " " + httpServer.argName(i) + ": " + httpServer.arg(i) + "\n";
-  }
-
-  httpServer.send(404, "text/plain", message);
-}
-
 void setup(void) {
-  char c;
-  int i;
   Serial.begin(115200);
   Serial.println("\nESP8266Template begin");
 
@@ -161,40 +56,7 @@ void setup(void) {
   // wifiManager.resetSettings();
   wifiManager.autoConnect(name);
 
-  httpServer.on("/status", HTTP_GET, handleStatus );
-  httpServer.on("/reset", []() {
-    httpServer.send(200, "text/plain", "reseting wifi settings\n");
-    wifiManager.resetSettings();
-  });
-  httpServer.on("/reboot", []() {
-    httpServer.send(200, "text/plain", "rebooting\n");
-    delay(1000);
-    ESP.restart();
-  });
-  httpServer.on("/reload", []() {
-    httpServer.send(200, "text/plain", "reloading\n");
-    configLoad();
-  });
-  httpServer.on("/heartbeat", []() {
-    httpServer.send(200, "text/plain", "heartbeat interval set\n");
-    if (httpServer.arg("interval")) {
-      heartbeatInterval = (httpServer.arg("interval")).toInt();
-      if (heartbeatInterval < 1) {
-        heartbeatInterval = 10000;
-      }
-    }
-    if (httpServer.arg("enabled")) {
-      heartbeatEnabled = (httpServer.arg("enabled")).toInt();
-    }
-  });
-
-
-  httpUpdater.setup(&httpServer, update_path);
-  httpServer.begin();
-  // Serial.print("IP   ");
-  // Serial.println(WiFi.localIP().toString());
-  Serial.println("HTTP server started");
-  Serial.println("HTTP updater started");
+  httpServerSetup();
 
   if (MDNS.begin(name)) {
       Serial.print ("MDNS responder started http://");
@@ -202,81 +64,29 @@ void setup(void) {
       Serial.println(".local");
   }
 
-  if (websocketserverEnabled) {
-    webSocketServer = new WebSocketsServer(81);
-    webSocketServer->begin();
-    webSocketServer->onEvent(webSocketEvent);
-    Serial.println("WebSocketServer started");
-  }
-
-  if (tcpserverEnabled) {
-    int p = config["tcpserver"]["port"];
-    tcpServer = new WiFiServer(p);
-    tcpServer->setNoDelay(true);
-    tcpServer->begin(p);
-    Serial.print("tcpServer started on port ");
-    Serial.println(p);
-  }
-
-  if (alexaEnabled) {
-    char devname[NAMELEN];
-    alexa = new fauxmoESP();
-    alexa->enable(true);
-    alexa->enable(false);
-    alexa->enable(true);
-
-    Serial.print("alexa devices ");
-    // from https://arduinojson.org/v6/api/jsonarray/
-    for(JsonVariant v : config["alexa"]["devices"].as<JsonArray>()) {
-      Serial.print("'");
-      Serial.print(v.as<String>());
-      Serial.print("' ");
-      (v.as<String>()).toCharArray(devname,NAMELEN-1);
-      alexa->addDevice(devname);
-    }
-    Serial.println("started");
-
-    alexa->onSetState([](unsigned char device_id, const char * device_name, bool state, unsigned char value) {
-      Serial.printf("[MAIN] Device #%d (%s) state: %s value: %d\n", device_id, device_name, state ? "ON" : "OFF", value);
-      digitalWrite(heartbeatPin, !state);
-    });
-  }
-
-  if (heartbeatEnabled) {
-    pinMode(heartbeatPin, OUTPUT);
-  }
+  if (websocketserverEnabled)   websocketServerSetup();
+  if (heartbeatEnabled)         heartbeatSetup(); 
+  if (alexaEnabled)             alexaSetup();
 }
 
-void heartbeatLoop() {
-  uint32_t milli = millis();
-  if (milli > heartbeatTimeout) {
-    digitalWrite(heartbeatPin,!digitalRead(heartbeatPin));
-    heartbeatTimeout = milli + heartbeatInterval;
-  }
+
+
+void loop(void) {
+  httpServer.handleClient();
+
+  if (tcpServerEnabled)       tcpServerLoop();
+  if (alexaEnabled)           alexaLoop();
+  if (heartbeatEnabled)       heartbeatLoop();
+  if (websocketserverEnabled) websocketserverLoop();
+
+  ESP.wdtFeed(); 
+  yield();
 }
-void alexaLoop() {
-  alexa->handle();  
-}
 
-void websocketserverLoop() {
-  uint32_t milli = millis();
-  if (milli > websocketTimeout) {
-    char line[40];
-    webSocketServer->loop();
-    sprintf(line,"uptime:%d",milli/1000);
-    webSocketServer->broadcastTXT(line,strlen(line));
 
-    sprintf(line,"led:%d",!digitalRead(heartbeatPin));
-    webSocketServer->broadcastTXT(line,strlen(line));
 
-    sprintf(line,"name:%s",name);
-    webSocketServer->broadcastTXT(line,strlen(line));
-
-    sprintf(line,"label:%s",label);
-    webSocketServer->broadcastTXT(line,strlen(line));
-    websocketTimeout = milli + websocketInterval;
-  }
-}
+/* ---- tcpserver code ----------------------------------------------*/
+// use socat TCP:office.local:23 -,raw,echo=0
 
 void tcpServerLoop() {
   int i;
@@ -322,16 +132,200 @@ void tcpServerWrite(char *buf, uint16_t len) {
   }
 }
 
-
-void loop(void) {
-  httpServer.handleClient();
-
-  if (tcpserverEnabled)       tcpServerLoop();
-  if (alexaEnabled)           alexaLoop();
-  if (heartbeatEnabled)       heartbeatLoop();
-  if (websocketserverEnabled) websocketserverLoop();
-
-  ESP.wdtFeed(); 
-
-  yield();
+void tcpServerSetup() {
+  if (tcpServerEnabled) {
+    int p = config["tcpserver"]["port"];
+    tcpServer = new WiFiServer(p);
+    tcpServer->setNoDelay(true);
+    tcpServer->begin(p);
+    Serial.print("tcpServer started on port ");
+    Serial.println(p);
+  }
 }
+
+
+
+/* ---- httpServer code ----------------------------------------------*/
+void httpServerSetup() {
+  httpServer.on("/heartbeat", []() {
+    httpServer.send(200, "text/plain", "heartbeat interval set\n");
+    if (httpServer.arg("interval")) {
+      heartbeatInterval = (httpServer.arg("interval")).toInt();
+      if (heartbeatInterval < 1) {
+        heartbeatInterval = 10000;
+      }
+    }
+    if (httpServer.arg("enabled")) {
+      heartbeatEnabled = (httpServer.arg("enabled")).toInt();
+    }
+  });
+
+  httpServer.on("/status", HTTP_GET, handleStatus );
+  httpServer.on("/reset", []() {
+    httpServer.send(200, "text/plain", "reseting wifi settings\n");
+    wifiManager.resetSettings();
+  });
+  httpServer.on("/reboot", []() {
+    httpServer.send(200, "text/plain", "rebooting\n");
+    delay(1000);
+    ESP.restart();
+  });
+  httpServer.on("/reload", []() {
+    httpServer.send(200, "text/plain", "reloading\n");
+    configLoad();
+  });
+
+  httpUpdater.setup(&httpServer, update_path);
+  httpServer.begin();
+  // Serial.print("IP   ");
+  // Serial.println(WiFi.localIP().toString());
+  Serial.println("HTTP server started");
+  Serial.println("HTTP updater started");
+}
+
+//get heap status, analog input value and all GPIO statuses in one json call
+void handleStatus() {
+    String json = "{";
+    json += "\"heap\":" + String(ESP.getFreeHeap());
+    json += ", \"analog\":" + String(analogRead(A0));
+    json += ", \"gpio\":" + String((uint32_t)(((GPI | GPO) & 0xFFFF) | ((GP16I & 0x01) << 16)));
+    json += "}";
+    httpServer.send(200, "text/json", json);
+    json = String();
+}
+
+void handleNotFound() {
+  String message = "File Not Found\n\n";
+  message += "URI: ";
+  message += httpServer.uri();
+  message += "\nMethod: ";
+  message += (httpServer.method() == HTTP_GET) ? "GET" : "POST";
+  message += "\nArguments: ";
+  message += httpServer.args();
+  message += "\n";
+
+  for (uint8_t i = 0; i < httpServer.args(); i++) {
+    message += " " + httpServer.argName(i) + ": " + httpServer.arg(i) + "\n";
+  }
+
+  httpServer.send(404, "text/plain", message);
+}
+
+
+
+
+/* ---- websocket code ----------------------------------------------*/
+void websocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
+  Serial.printf("webSocketEvent(%d, %d, ...)\r\n", num, type);
+  switch(type) {
+    case WStype_DISCONNECTED:
+      Serial.printf("[%u] Disconnected!\r\n", num);
+      break;
+    case WStype_CONNECTED:
+      {
+        IPAddress ip = webSocketServer->remoteIP(num);
+        Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\r\n", num, ip[0], ip[1], ip[2], ip[3], payload);
+        websocketTimeout = millis() + 10;
+      }
+      break;
+    case WStype_TEXT:
+      Serial.printf("[%u] get Text: %s\r\n", num, payload);
+
+/*
+      if (strcmp(LEDON, (const char *)payload) == 0) {
+        writeLED(true);
+      }
+      else if (strcmp(LEDOFF, (const char *)payload) == 0) {
+        writeLED(false);
+      }
+      else {
+        Serial.println("Unknown command");
+      }
+*/
+
+      // send data to all connected clients
+      webSocketServer->broadcastTXT(payload, length);
+      break;
+    case WStype_BIN:
+      Serial.printf("[%u] get binary length: %u\r\n", num, length);
+      hexdump(payload, length);
+
+      // echo data back to browser
+      webSocketServer->sendBIN(num, payload, length);
+      break;
+    default:
+      Serial.printf("Invalid WStype [%d]\r\n", type);
+      break;
+  }
+}
+
+void websocketServerSetup() {
+    webSocketServer = new WebSocketsServer(81);
+    webSocketServer->begin();
+    webSocketServer->onEvent(websocketEvent);
+    Serial.println("WebSocketServer started");
+}
+
+void websocketserverLoop() {
+  uint32_t milli = millis();
+  if (milli > websocketTimeout) {
+    char line[40];
+    webSocketServer->loop();
+    sprintf(line,"uptime:%d",milli/1000);
+    webSocketServer->broadcastTXT(line,strlen(line));
+
+    sprintf(line,"led:%d",!digitalRead(heartbeatPin));
+    webSocketServer->broadcastTXT(line,strlen(line));
+
+    sprintf(line,"name:%s",name);
+    webSocketServer->broadcastTXT(line,strlen(line));
+
+    sprintf(line,"label:%s",label);
+    webSocketServer->broadcastTXT(line,strlen(line));
+    websocketTimeout = milli + websocketInterval;
+  }
+}
+
+/* ---- heartbeat code ----------------------------------------------*/
+void heartbeatSetup() {
+    pinMode(heartbeatPin, OUTPUT);
+}
+
+void heartbeatLoop() {
+  uint32_t milli = millis();
+  if (milli > heartbeatTimeout) {
+    digitalWrite(heartbeatPin,!digitalRead(heartbeatPin));
+    heartbeatTimeout = milli + heartbeatInterval;
+  }
+}
+
+/* ---- alexa code ----------------------------------------------*/
+void alexaSetup() {
+    char devname[NAMELEN];
+    alexa = new fauxmoESP();
+    alexa->enable(true);
+    alexa->enable(false);
+    alexa->enable(true);
+
+    Serial.print("alexa devices ");
+    // from https://arduinojson.org/v6/api/jsonarray/
+    for(JsonVariant v : config["alexa"]["devices"].as<JsonArray>()) {
+      Serial.print("'");
+      Serial.print(v.as<String>());
+      Serial.print("' ");
+      (v.as<String>()).toCharArray(devname,NAMELEN-1);
+      alexa->addDevice(devname);
+    }
+    Serial.println("started");
+
+    alexa->onSetState([](unsigned char device_id, const char * device_name, bool state, unsigned char value) {
+      Serial.printf("[MAIN] Device #%d (%s) state: %s value: %d\n", device_id, device_name, state ? "ON" : "OFF", value);
+      digitalWrite(heartbeatPin, !state);
+    });
+}
+
+void alexaLoop() {
+  alexa->handle();  
+}
+
+
