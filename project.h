@@ -1,7 +1,6 @@
 #ifndef PROJECT_H
 #define PROJECT_H
 
-
 #define NAMELEN 20
 #define LABELLEN 50
 

@@ -11,13 +11,6 @@
 #include "project.h"
 #include "fs.h"
 
-/*
-  upload the contents of the data folder with MkSPIFFS Tool ("ESP8266 Sketch Data Upload" in Tools menu in Arduino IDE)
-  or you can upload the contents of a folder if you CD in that folder and run the following command:
-  for file in `ls -A1`; do echo $file;curl -F "file=@$PWD/$file" myLoc.local/edit; done
-*/
-
-
 void setup(void) {
   Serial.begin(115200);
   Serial.println("\nESP8266Template begin");
@@ -332,3 +325,8 @@ void alexaLoop() {
 }
 
 
+/*
+  upload the contents of the data folder with MkSPIFFS Tool ("ESP8266 Sketch Data Upload" in Tools menu in Arduino IDE)
+  or you can upload the contents of a folder if you CD in that folder and run the following command:
+  for file in `ls -A1`; do echo $file;curl -F "file=@$PWD/$file" myLoc.local/edit; done
+*/
