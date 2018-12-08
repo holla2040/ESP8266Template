@@ -1,5 +1,5 @@
 {"name":"office",
- "label":"testl",
+ "label":"office label",
  "heartbeat":{
    "enabled":1,
    "interval":1000,
@@ -14,6 +14,7 @@
     "port":23
   },
   "websocketserver":{
-    "enabled":1
+    "enabled":1,
+    "interval":1000
   }
 }

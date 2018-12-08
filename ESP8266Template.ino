@@ -26,6 +26,9 @@ uint32_t heartbeatTimeout;
 uint8_t  heartbeatPin;
 uint32_t heartbeatInterval; // this is heartbeat interval in mS
 
+uint32_t websocketTimeout;
+uint32_t websocketInterval; 
+
 ESP8266WebServer httpServer(80);
 StaticJsonDocument<1024> doc;
 JsonObject config;
@@ -55,6 +58,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
       {
         IPAddress ip = webSocketServer->remoteIP(num);
         Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\r\n", num, ip[0], ip[1], ip[2], ip[3], payload);
+        websocketTimeout = millis() + 10;
       }
       break;
     case WStype_TEXT:
@@ -116,10 +120,11 @@ void configLoad() {
     Serial.println(label);
 
     heartbeatEnabled        = config["heartbeat"]["enabled"];
-    heartbeatInterval       = config["heartbeat"]["interval"];
+    heartbeatInterval       = config["heartbeat"]["interval"] | 1000;
     heartbeatPin            = config["heartbeat"]["pin"];
     tcpserverEnabled        = config["tcpserver"]["enabled"];
     websocketserverEnabled  = config["websocketserver"]["enabled"];
+    websocketInterval       = config["websocketserver"]["interval"] | 1000;
     alexaEnabled            = config["alexa"]["enabled"];
 
     file.close();
@@ -173,7 +178,15 @@ void setup(void) {
   });
   httpServer.on("/heartbeat", []() {
     httpServer.send(200, "text/plain", "heartbeat interval set\n");
-    heartbeatInterval = (httpServer.arg("interval")).toInt();
+    if (httpServer.arg("interval")) {
+      heartbeatInterval = (httpServer.arg("interval")).toInt();
+      if (heartbeatInterval < 1) {
+        heartbeatInterval = 10000;
+      }
+    }
+    if (httpServer.arg("enabled")) {
+      heartbeatEnabled = (httpServer.arg("enabled")).toInt();
+    }
   });
 
 
@@ -281,33 +294,36 @@ void tcpServerWrite(char *buf, uint16_t len) {
 
 
 void loop(void) {
+  uint32_t milli = millis();
   httpServer.handleClient();
 
   if (tcpserverEnabled)       tcpServerLoop();
   if (alexaEnabled)           alexa->handle();
 
   if (heartbeatEnabled) {
-    if (millis() > heartbeatTimeout) {
+    if (milli > heartbeatTimeout) {
       digitalWrite(heartbeatPin,!digitalRead(heartbeatPin));
-      heartbeatTimeout = millis() + heartbeatInterval;
+      heartbeatTimeout = milli + heartbeatInterval;
     }
   }
 
   if (websocketserverEnabled) {
-    char line[40];
-    webSocketServer->loop();
-    sprintf(line,"uptime:%d",millis()/1000);
-    webSocketServer->broadcastTXT(line,strlen(line));
+    if (milli > websocketTimeout) {
+      char line[40];
+      webSocketServer->loop();
+      sprintf(line,"uptime:%d",milli/1000);
+      webSocketServer->broadcastTXT(line,strlen(line));
 
-    sprintf(line,"led:%d",!digitalRead(heartbeatPin));
-    webSocketServer->broadcastTXT(line,strlen(line));
+      sprintf(line,"led:%d",!digitalRead(heartbeatPin));
+      webSocketServer->broadcastTXT(line,strlen(line));
 
-    sprintf(line,"name:%s",name);
-    webSocketServer->broadcastTXT(line,strlen(line));
+      sprintf(line,"name:%s",name);
+      webSocketServer->broadcastTXT(line,strlen(line));
 
-    sprintf(line,"label:%s",label);
-    webSocketServer->broadcastTXT(line,strlen(line));
-
+      sprintf(line,"label:%s",label);
+      webSocketServer->broadcastTXT(line,strlen(line));
+      websocketTimeout = milli + websocketInterval;
+    }
   }
 
   ESP.wdtFeed(); 
