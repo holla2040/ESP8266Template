@@ -40,7 +40,6 @@ WiFiClient tcpServerClients[MAX_SRV_CLIENTS];
 
 fauxmoESP *alexa;
 
-
 ESP8266HTTPUpdateServer httpUpdater;
 const char *update_path = "/upload";
 WiFiManager wifiManager;
@@ -248,6 +247,37 @@ void setup(void) {
   }
 }
 
+void heartbeatLoop() {
+  uint32_t milli = millis();
+  if (milli > heartbeatTimeout) {
+    digitalWrite(heartbeatPin,!digitalRead(heartbeatPin));
+    heartbeatTimeout = milli + heartbeatInterval;
+  }
+}
+void alexaLoop() {
+  alexa->handle();  
+}
+
+void websocketserverLoop() {
+  uint32_t milli = millis();
+  if (milli > websocketTimeout) {
+    char line[40];
+    webSocketServer->loop();
+    sprintf(line,"uptime:%d",milli/1000);
+    webSocketServer->broadcastTXT(line,strlen(line));
+
+    sprintf(line,"led:%d",!digitalRead(heartbeatPin));
+    webSocketServer->broadcastTXT(line,strlen(line));
+
+    sprintf(line,"name:%s",name);
+    webSocketServer->broadcastTXT(line,strlen(line));
+
+    sprintf(line,"label:%s",label);
+    webSocketServer->broadcastTXT(line,strlen(line));
+    websocketTimeout = milli + websocketInterval;
+  }
+}
+
 void tcpServerLoop() {
   int i;
   char c;
@@ -294,37 +324,12 @@ void tcpServerWrite(char *buf, uint16_t len) {
 
 
 void loop(void) {
-  uint32_t milli = millis();
   httpServer.handleClient();
 
   if (tcpserverEnabled)       tcpServerLoop();
-  if (alexaEnabled)           alexa->handle();
-
-  if (heartbeatEnabled) {
-    if (milli > heartbeatTimeout) {
-      digitalWrite(heartbeatPin,!digitalRead(heartbeatPin));
-      heartbeatTimeout = milli + heartbeatInterval;
-    }
-  }
-
-  if (websocketserverEnabled) {
-    if (milli > websocketTimeout) {
-      char line[40];
-      webSocketServer->loop();
-      sprintf(line,"uptime:%d",milli/1000);
-      webSocketServer->broadcastTXT(line,strlen(line));
-
-      sprintf(line,"led:%d",!digitalRead(heartbeatPin));
-      webSocketServer->broadcastTXT(line,strlen(line));
-
-      sprintf(line,"name:%s",name);
-      webSocketServer->broadcastTXT(line,strlen(line));
-
-      sprintf(line,"label:%s",label);
-      webSocketServer->broadcastTXT(line,strlen(line));
-      websocketTimeout = milli + websocketInterval;
-    }
-  }
+  if (alexaEnabled)           alexaLoop();
+  if (heartbeatEnabled)       heartbeatLoop();
+  if (websocketserverEnabled) websocketserverLoop();
 
   ESP.wdtFeed(); 
 
