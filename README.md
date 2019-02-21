@@ -22,4 +22,8 @@ Sample URLs (also look at the curl make targets)
 * reboot, http://esp8266.local/reboot
 * changing runtime hearbeat interval, http://esp8266.local/heartbeat?interval=50
 
-
+Requires the following libraries to be installed, tested with arduino IDE 1.8.8
+* https://github.com/Links2004/arduinoWebSockets
+* https://github.com/tzapu/WiFiManager
+* https://arduinojson.org/?utm_source=meta&utm_medium=library.properties
+* https://github.com/me-no-dev/ESPAsyncTCP
