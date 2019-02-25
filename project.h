@@ -43,5 +43,7 @@ fauxmoESP   *alexa;
 void        alexaSetup();
 void        alexaLoop();
 
+uint32_t    ncTimeout;
+void        ncLoop();
 
 #endif
