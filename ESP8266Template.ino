@@ -11,26 +11,12 @@
 #include "project.h"
 #include "fs.h"
 
-// nc -C 192.168.1.117 23
-// $N00@]
-// nulsom needs null modem
-
-// #define DEBUG 
-
-
-char tcpbuffer[20];
-char ncReply[20];
-
 void setup(void) {
-#ifdef DEBUG
   Serial.begin(115200);
-  Serial.println("\nncWifiGateway setup");
-#endif
+  Serial.println("\nESP8266Template begin");
 
   fsSetup();
-#ifdef DEBUG
   Serial.println("filesystem started");
-#endif
 
   configLoad();
 
@@ -40,26 +26,15 @@ void setup(void) {
   httpServerSetup();
 
   if (MDNS.begin(name)) {
-#ifdef DEBUG
       Serial.print ("MDNS responder started http://");
       Serial.print(name);
       Serial.println(".local");
-#endif
   }
 
   if (tcpServerEnabled)         tcpServerSetup();
   if (websocketserverEnabled)   websocketServerSetup();
   if (heartbeatEnabled)         heartbeatSetup(); 
   if (alexaEnabled)             alexaSetup();
-
-#ifdef DEBUG
-  Serial.println("\nncWifiGateway setup complete, switching to 9600 7E1");
-  delay(500);
-#endif
-  Serial.begin(9600, SERIAL_7E1);
-  Serial.print('\r');
-  Serial.print('\r');
-  Serial.print('\r');
 }
 
 
@@ -70,25 +45,10 @@ void loop(void) {
   if (alexaEnabled)           alexaLoop();
   if (heartbeatEnabled)       heartbeatLoop();
   if (websocketserverEnabled) websocketserverLoop();
-  ncLoop();
 
   ESP.wdtFeed(); 
   yield();
 }
-
-uint8_t commandChecksum(char *command) {
-  uint8_t d7d6, d1d0, _xor, chk = 0;
-  while (*command) {
-    chk += command[0];
-    command++;
-  }
-  d7d6 = chk >> 6;
-  d1d0 = chk & 0x03;
-  _xor = d7d6 ^ d1d0;
-  chk = (((chk & 0xFC) + _xor) & 0x3F) + 0x30;
-  return chk;
-}
-
 
 
 /* ---- config code ----------------------------------------------*/
@@ -116,8 +76,6 @@ void configLoad() {
     alexaEnabled            = config["alexa"]["enabled"];
 
     file.close();
-    Serial.println("configLoad done");
-    Serial.println(heartbeatPin);
   }
 }
 
@@ -126,11 +84,9 @@ void configLoad() {
 /* ---- tcpserver code ----------------------------------------------*/
 // use socat TCP:office.local:23 -,raw,echo=0
 
-
 void tcpServerLoop() {
   int i;
   char c;
-  uint8_t chk;
 
   if (tcpServer->hasClient()) {
     for (i = 0; i < MAX_SRV_CLIENTS; i++) {
@@ -138,7 +94,6 @@ void tcpServerLoop() {
       if (!tcpServerClients[i] || !tcpServerClients[i].connected()) {
         if (tcpServerClients[i]) tcpServerClients[i].stop();
         tcpServerClients[i] = tcpServer->available();
-        tcpServerClients[i].print("ncWifiGateway connected\n");
         continue;
       }
     }
@@ -150,20 +105,7 @@ void tcpServerLoop() {
   for (int i = 0; i < MAX_SRV_CLIENTS; i++) {
     if (tcpServerClients[i] && tcpServerClients[i].connected()) {
       while (tcpServerClients[i].available()) {
-        c = tcpServerClients[i].read();
-        if (c == '\n') {
-          Serial.print('$');
-          Serial.print(tcpbuffer);
-          chk = commandChecksum(tcpbuffer);
-          Serial.print((char)chk);
-          Serial.print('\r');
-          strcpy(tcpbuffer,"");
-        } else {
-          int l = strlen(tcpbuffer);
-          tcpbuffer[l] = c;
-          tcpbuffer[l+1] = 0;
-          if (strlen(tcpbuffer) > 18) strcpy(tcpbuffer,"$");
-        }
+        Serial.print((char)tcpServerClients[i].read());
       }
     }
   }
@@ -172,15 +114,7 @@ void tcpServerLoop() {
     c = Serial.read();
     for (int i = 0; i < MAX_SRV_CLIENTS; i++) {
       if (tcpServerClients[i] && tcpServerClients[i].connected()) {
-        if (c == '\r') {
-          tcpServerClients[i].write('\n');
-        } else {
-//          tcpServerClients[i].write(' ');
-          tcpServerClients[i].write(c);
-//          tcpServerClients[i].print("[");
-//          tcpServerClients[i].print(c,HEX);
-//          tcpServerClients[i].print("]");
-        }
+        tcpServerClients[i].write(c);
       }
     }
   }
@@ -202,7 +136,6 @@ void tcpServerSetup() {
     tcpServer->begin(p);
     Serial.print("tcpServer started on port ");
     Serial.println(p);
-    strcpy(tcpbuffer,"");
   }
 }
 
@@ -337,6 +270,15 @@ void websocketserverLoop() {
     char line[40];
     sprintf(line,"uptime:%d",milli/1000);
     webSocketServer->broadcastTXT(line,strlen(line));
+
+    sprintf(line,"led:%d",!digitalRead(heartbeatPin));
+    webSocketServer->broadcastTXT(line,strlen(line));
+
+    sprintf(line,"name:%s",name);
+    webSocketServer->broadcastTXT(line,strlen(line));
+
+    sprintf(line,"label:%s",label);
+    webSocketServer->broadcastTXT(line,strlen(line));
     websocketTimeout = milli + websocketInterval;
   }
 }
@@ -389,61 +331,3 @@ void alexaLoop() {
   or you can upload the contents of a folder if you CD in that folder and run the following command:
   for file in `ls -A1`; do echo $file;curl -F "file=@$PWD/$file" myLoc.local/edit; done
 */
-
-
-// nc specific functions
-
-int ncCommandSend(char *command) {
-  uint32_t timeout;
-  char query[20];
-  char c;
-  char *ptr = &ncReply[0];
-  uint8_t chk = commandChecksum(command);
-  sprintf(query, "$%s%c\r", command, (char)chk);
-  Serial.print(query);
-  timeout = millis() + 200;
-  while (millis() < timeout) {
-    if (Serial.available()) {
-      c = Serial.read();
-      if (c == '\r') {
-        *ptr = 0;
-        return strlen(ncReply);
-      } else {
-        *ptr++ = c;
-      }
-    }
-  }
-  return 0; 
-}
-
-void ncCommandPublish(char *command,char *wsid) {
-  char line[40];
-  if (ncCommandSend(command)) {
-    ncReply[strlen(ncReply)-1] = 0; // clear off the checksum byte 
-    sprintf(line,"%s:%s",wsid,&ncReply[2]);
-    webSocketServer->broadcastTXT(line,strlen(line));
-/*
-    for (int i = 0; i < MAX_SRV_CLIENTS; i++) {
-      if (tcpServerClients[i] && tcpServerClients[i].connected()) {
-        tcpServerClients[i].println(line);
-      }
-    }
-*/
-  }
-}
-
-
-void ncLoop() {
-  uint32_t milli = millis();
-  if (milli > ncTimeout) {
-    ncCommandPublish("N@","nctyperev");
-    ncCommandPublish("P19J","p19stage1t");
-    ncCommandPublish("P19K","p19stage2t");
-    ncCommandPublish("P19L","p19vacuum");
-    ncCommandPublish("P19A?","p19on");
-    ncCommandPublish("P19B?","p19tcon");
-    ncCommandPublish("P19D?","p19rough");
-    ncCommandPublish("P19E?","p19purge");
-    ncTimeout = milli + 1000;
-  }
-}

@@ -27,3 +27,4 @@ Requires the following libraries to be installed, tested with arduino IDE 1.8.8
 * https://github.com/tzapu/WiFiManager
 * https://arduinojson.org/?utm_source=meta&utm_medium=library.properties
 * https://github.com/me-no-dev/ESPAsyncTCP
+# https://bitbucket.org/xoseperez/fauxmoesp
