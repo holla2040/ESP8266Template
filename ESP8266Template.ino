@@ -82,6 +82,7 @@ void configLoad() {
     websocketInterval       = config["websocketserver"]["interval"] | 1000;
     alexaEnabled            = config["alexa"]["enabled"];
     ntpEnabled              = config["ntp"]["enabled"];
+    ntpOffset               = config["ntp"]["offset"];
 
     file.close();
   }
@@ -307,10 +308,12 @@ void heartbeatLoop() {
 /* ---- ntp code ----------------------------------------------*/
 void ntpSetup() {
   ntpClient.begin();
+  ntpClient.setTimeOffset(ntpOffset);
 }
 
 void ntpLoop() {
   ntpClient.update();
+//   Serial.println(ntpClient.getFormattedTime()); delay(1000);
 }
 
 /* ---- alexa code ----------------------------------------------*/

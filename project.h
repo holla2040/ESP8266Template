@@ -47,5 +47,6 @@ uint32_t    ncTimeout;
 void        ncLoop();
 
 boolean     ntpEnabled;
+long        ntpOffset;
 
 #endif
