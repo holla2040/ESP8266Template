@@ -6,10 +6,15 @@
 #include <WiFiManager.h>        //https://github.com/tzapu/WiFiManager
 #include <EEPROM.h>
 #include <ArduinoJson.h>
+#include <NTPClient.h>
+
 
 #include "fauxmoESP.h"
 #include "project.h"
 #include "fs.h"
+
+WiFiUDP   ntpUDP;
+NTPClient ntpClient(ntpUDP);
 
 void setup(void) {
   Serial.begin(115200);
@@ -35,6 +40,7 @@ void setup(void) {
   if (websocketserverEnabled)   websocketServerSetup();
   if (heartbeatEnabled)         heartbeatSetup(); 
   if (alexaEnabled)             alexaSetup();
+  if (ntpEnabled)               ntpSetup();
 }
 
 
@@ -43,6 +49,7 @@ void loop(void) {
 
   if (tcpServerEnabled)       tcpServerLoop();
   if (alexaEnabled)           alexaLoop();
+  if (ntpEnabled)             ntpLoop();
   if (heartbeatEnabled)       heartbeatLoop();
   if (websocketserverEnabled) websocketserverLoop();
 
@@ -74,6 +81,7 @@ void configLoad() {
     websocketserverEnabled  = config["websocketserver"]["enabled"];
     websocketInterval       = config["websocketserver"]["interval"] | 1000;
     alexaEnabled            = config["alexa"]["enabled"];
+    ntpEnabled              = config["ntp"]["enabled"];
 
     file.close();
   }
@@ -294,6 +302,15 @@ void heartbeatLoop() {
     digitalWrite(heartbeatPin,!digitalRead(heartbeatPin));
     heartbeatTimeout = milli + heartbeatInterval;
   }
+}
+
+/* ---- ntp code ----------------------------------------------*/
+void ntpSetup() {
+  ntpClient.begin();
+}
+
+void ntpLoop() {
+  ntpClient.update();
 }
 
 /* ---- alexa code ----------------------------------------------*/

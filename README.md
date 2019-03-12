@@ -15,6 +15,7 @@ Supports
 * configurable websocket server
 * configurable LED heartbeat
 * configurable alexa compatibility using fauxmoESP
+* configurable NTP compatibility using NTPClient
 
 Sample URLs (also look at the curl make targets)
 * status query,http://esp8266.local/status
@@ -27,4 +28,6 @@ Requires the following libraries to be installed, tested with arduino IDE 1.8.8
 * https://github.com/tzapu/WiFiManager
 * https://arduinojson.org/?utm_source=meta&utm_medium=library.properties
 * https://github.com/me-no-dev/ESPAsyncTCP
-# https://bitbucket.org/xoseperez/fauxmoesp
+* https://bitbucket.org/xoseperez/fauxmoesp
+* https://github.com/arduino-libraries/NTPClient
+
