@@ -21,5 +21,9 @@
   "websocketserver":{
     "enabled":1,
     "interval":1000
+  },
+  "logging":{
+    "enabled":1,
+    "interval":10000
   }
 }

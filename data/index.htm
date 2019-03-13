@@ -3,11 +3,10 @@
 <head>
   <meta http-equiv="Content-type" content="text/html; charset=utf-8">
   <title>ESP Monitor</title>
-  <script type="text/javascript" src="graphs.js"></script>
+  <script type="text/javascript" src="chart.js"></script>
   <script type="text/javascript">
     var heap,temp,digi;
     var reloadPeriod = 1000;
-    var running = false;
     var websock;
 
     function webSocketLoad() {
@@ -20,9 +19,23 @@
         // splitting evt.data into key,value where value might have ':'
         var i = evt.data.indexOf(":");
         var key = evt.data.substr(0,i);
-        var value = evt.data.substr(i);
+        var value = evt.data.substr(i+1);
         var e = document.getElementById(key);
         if (e) {e.innerHTML = value;};
+        if (key == "status") {
+           // status line format epoch,timestamp,value
+           try {
+             var status = value.split(',');
+             chart.data.datasets[0].data.push(status[2]);
+             chart.data.labels.push(status[1].split(' ')[1]);
+             chart.update();
+           } catch(err) {
+           }
+        }
+        if (key == "label") {
+          document.title = value;
+        }
+
       };
     };
 
@@ -34,62 +47,78 @@
     }
     
     function loadValues(){
-      if(!running) return;
       var xh = new XMLHttpRequest();
       xh.onreadystatechange = function(){
         if (xh.readyState == 4){
           if(xh.status == 200) {
             var res = JSON.parse(xh.responseText);
-            heap.add(res.heap);
-            temp.add(res.analog);
-            digi.add(res.gpio);
-            if(running) setTimeout(loadValues, reloadPeriod);
-          } else running = false;
+          }
         }
       };
       xh.open("GET", "/status", true);
       xh.send(null);
     };
     
-    function run(){
-      if(!running){
-        running = true;
-        loadValues();
-      }
-    }
-    
     function onBodyLoad(){
-      var refreshInput = document.getElementById("refresh-rate");
-      refreshInput.value = reloadPeriod;
-      refreshInput.onchange = function(e){
-        var value = parseInt(e.target.value);
-        reloadPeriod = (value > 0)?value:0;
-        e.target.value = reloadPeriod;
-      }
-      var stopButton = document.getElementById("stop-button");
-      stopButton.onclick = function(e){
-        running = false;
-      }
-      var startButton = document.getElementById("start-button");
-      startButton.onclick = function(e){
-        run();
-      }
-      
-      // Example with 10K thermistor
-      //function calcThermistor(v) {
-      //  var t = Math.log(((10230000 / v) - 10000));
-      //  t = (1/(0.001129148+(0.000234125*t)+(0.0000000876741*t*t*t)))-273.15;
-      //  return (t>120)?0:Math.round(t*10)/10;
-      //}
-      //temp = createGraph(document.getElementById("analog"), "Temperature", 100, 128, 10, 40, false, "cyan", calcThermistor);
-      
-      temp = createGraph(document.getElementById("analog"), "Analog Input", 100, 128, 0, 1023, false, "cyan");
-      heap = createGraph(document.getElementById("heap"), "Current Heap", 100, 125, 0, 30000, true, "orange");
-      digi = createDigiGraph(document.getElementById("digital"), "GPIO", 100, 146, [0, 4, 5, 16], "gold");
-
       webSocketLoad();
-      run();
+      chartLoad();
+   }; 
+
+    function chartLoad() {
+      chart = new Chart(document.getElementById("line-chart"), {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{ 
+            data: [],
+              label: "value",
+              borderColor: "#3e95cd",
+              pointRadius: 0,
+              borderWidth: 1,
+              fill: false
+            }]
+        },
+        options: {
+          title: {
+            display: true,
+            text: 'myvalue'
+          },
+          scales: {
+            yAxes: [{
+              display: true,
+              ticks: {
+                  beginAtZero: true,
+                  stepSize: 50,
+                  min: 0,
+                  max: 1000
+              }
+            }]
+          }
+        }
+      });
+      var xh = new XMLHttpRequest();
+      xh.onreadystatechange = function(){
+        if (xh.readyState == 4 ){
+          if(xh.status == 200) {
+            var lines = xh.responseText.split('\n');
+            for(var line = 1; line < lines.length; line++){
+                if (lines[line].length) {
+                  try {
+                    var status = lines[line].split(',');
+                    chart.data.datasets[0].data.push(status[2]);
+                    chart.data.labels.push(status[1].split(' ')[1]);
+                  } catch (err) {
+                  }
+                }
+            }
+           chart.update();
+          }
+        }
+      };
+      xh.open("GET", "/log.csv", true);
+      xh.send(null);
     }
+
   </script>
 </head>
 <body id="index" style="margin:0; padding:0;" onload="onBodyLoad()">
@@ -97,15 +126,14 @@
  label:  <span id="label">???</span>
  uptime: <span id="uptime">???</span>
  time:   <span id="time">???</span>
- led:    <span id="led">???</span></pre>
-  <div id="controls" style="display: block; border: 1px solid rgb(68, 68, 68); padding: 5px; margin: 5px; width: 362px; background-color: rgb(238, 238, 238);">
-    <label>Period (ms):</label>
-    <input type="number" id="refresh-rate"/>
-    <input type="button" id="start-button" value="Start"/>
-    <input type="button" id="stop-button" value="Stop"/>
-  </div>
-  <div id="heap"></div>
-  <div id="analog"></div>
-  <div id="digital"></div>
+ led:    <span id="led">???</span>
+ value:  <span id="value">???</span></pre>
+<hr>
+<canvas id="line-chart"></canvas>
+<hr>
+<a href='log.csv' target='_blank'>log</a>
+<a href='/edit' target='_blank'>edit</a>
+<a href='/reload' target='_blank'>reload</a>
+<a href='/reboot' target='_blank'>reboot</a>
 </body>
 </html>

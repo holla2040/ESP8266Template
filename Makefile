@@ -80,6 +80,12 @@ config:
 	@curl -F "file=@./data/config.json" http://${name}/edit
 	@curl http://${name}/config.json
 
+getfiles:
+	@echo ${name}
+	@echo "downloading index.htm and config.json"
+	@wget http://${name}/index.htm -O data/index.htm
+	@wget http://${name}/config.json -O data/config.json
+
 clean:
 	rm -rf /tmp/arduino_build*
 	rm -rf /tmp/arduino_cache*

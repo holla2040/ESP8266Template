@@ -52,4 +52,9 @@ uint32_t    ntpTimeout;
 uint16_t    ntpInterval; 
 String      getTimestampString();
 
+boolean     loggingEnabled;
+uint32_t    loggingTimeout;
+uint16_t    loggingInterval;
+
+
 #endif

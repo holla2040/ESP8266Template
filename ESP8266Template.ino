@@ -7,7 +7,7 @@
 #include <EEPROM.h>
 #include <ArduinoJson.h>
 #include <NTPClient.h>
-
+#include <FS.h>
 
 #include "fauxmoESP.h"
 #include "project.h"
@@ -15,6 +15,9 @@
 
 WiFiUDP   ntpUDP;
 NTPClient ntpClient(ntpUDP);
+File      logfile;
+
+char line[50];
 
 void setup(void) {
   Serial.begin(115200);
@@ -41,8 +44,9 @@ void setup(void) {
   if (heartbeatEnabled)         heartbeatSetup(); 
   if (alexaEnabled)             alexaSetup();
   if (ntpEnabled)               ntpSetup();
-}
+  if (loggingEnabled)           loggingSetup();
 
+}
 
 void loop(void) {
   httpServer.handleClient();
@@ -50,6 +54,7 @@ void loop(void) {
   if (tcpServerEnabled)       tcpServerLoop();
   if (alexaEnabled)           alexaLoop();
   if (ntpEnabled)             ntpLoop();
+  if (loggingEnabled)         loggingLoop();
   if (heartbeatEnabled)       heartbeatLoop();
   if (websocketserverEnabled) websocketserverLoop();
 
@@ -84,11 +89,12 @@ void configLoad() {
     ntpEnabled              = config["ntp"]["enabled"];
     ntpOffset               = config["ntp"]["offset"];
     ntpInterval             = config["ntp"]["interval"] | 1000;
+    loggingEnabled          = config["logging"]["enabled"];
+    loggingInterval         = config["logging"]["interval"] | 1000;
 
     file.close();
   }
 }
-
 
 
 /* ---- tcpserver code ----------------------------------------------*/
@@ -167,7 +173,6 @@ void httpServerSetup() {
     heartbeatTimeout = 0;
   });
 
-  httpServer.on("/status", HTTP_GET, handleStatus );
   httpServer.on("/reset", []() {
     httpServer.send(200, "text/plain", "reseting wifi settings\n");
     wifiManager.resetSettings();
@@ -190,16 +195,6 @@ void httpServerSetup() {
   Serial.println("HTTP updater started");
 }
 
-//get heap status, analog input value and all GPIO statuses in one json call
-void handleStatus() {
-    String json = "{";
-    json += "\"heap\":" + String(ESP.getFreeHeap());
-    json += ", \"analog\":" + String(analogRead(A0));
-    json += ", \"gpio\":" + String((uint32_t)(((GPI | GPO) & 0xFFFF) | ((GP16I & 0x01) << 16)));
-    json += "}";
-    httpServer.send(200, "text/json", json);
-    json = String();
-}
 
 void handleNotFound() {
   String message = "File Not Found\n\n";
@@ -219,8 +214,6 @@ void handleNotFound() {
 }
 
 
-
-
 /* ---- websocket code ----------------------------------------------*/
 void websocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
   Serial.printf("webSocketEvent(%d, %d, ...)\r\n", num, type);
@@ -233,23 +226,11 @@ void websocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         IPAddress ip = webSocketServer->remoteIP(num);
         Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\r\n", num, ip[0], ip[1], ip[2], ip[3], payload);
         websocketTimeout = millis() + 10;
+        publishStatic();
       }
       break;
     case WStype_TEXT:
       Serial.printf("[%u] get Text: %s\r\n", num, payload);
-
-/*
-      if (strcmp(LEDON, (const char *)payload) == 0) {
-        writeLED(true);
-      }
-      else if (strcmp(LEDOFF, (const char *)payload) == 0) {
-        writeLED(false);
-      }
-      else {
-        Serial.println("Unknown command");
-      }
-*/
-
       // send data to all connected clients
       webSocketServer->broadcastTXT(payload, length);
       break;
@@ -277,18 +258,12 @@ void websocketserverLoop() {
   uint32_t milli = millis();
   webSocketServer->loop();
   if (milli > websocketTimeout) {
-    char line[40];
     sprintf(line,"uptime:%d",milli/1000);
     webSocketServer->broadcastTXT(line,strlen(line));
 
     sprintf(line,"led:%d",!digitalRead(heartbeatPin));
     webSocketServer->broadcastTXT(line,strlen(line));
 
-    sprintf(line,"name:%s",name);
-    webSocketServer->broadcastTXT(line,strlen(line));
-
-    sprintf(line,"label:%s",label);
-    webSocketServer->broadcastTXT(line,strlen(line));
     websocketTimeout = milli + websocketInterval;
   }
 }
@@ -302,6 +277,7 @@ void heartbeatLoop() {
   uint32_t milli = millis();
   if (milli > heartbeatTimeout) {
     digitalWrite(heartbeatPin,!digitalRead(heartbeatPin));
+    sprintf(line,"led:%d",digitalRead(heartbeatPin));
     heartbeatTimeout = milli + heartbeatInterval;
   }
 }
@@ -353,7 +329,6 @@ void ntpLoop() {
   uint32_t milli = millis();
   ntpClient.update();
   if (milli > ntpTimeout) {
-    char line[40];
     sprintf(line,"time:%s",getTimestampString().c_str());
     webSocketServer->broadcastTXT(line,strlen(line));
     ntpTimeout = milli + ntpInterval;
@@ -388,3 +363,64 @@ String getTimestampString() {
    return yearStr + "-" + monthStr + "-" + dayStr + " " +
           hoursStr + ":" + minuteStr + ":" + secondStr;
 }
+
+/* ---- logging code ----------------------------------------------*/
+void loggingSetup() {
+  /* https://tttapa.github.io/ESP8266/Chap16%20-%20Data%20Logging.html */
+  /* ~/.arduino15/packages/esp8266/hardware/esp8266/2.5.0/cores/esp8266/FS.h */
+
+  if (SPIFFS.exists("/log.csv")) {
+    logfile = SPIFFS.open("/log.csv", "a"); // append on exists
+  } else {
+    logfile = SPIFFS.open("/log.csv", "w"); // write with line 1 header
+    logfile.println("Timestamp,Time,value");
+  }
+}
+
+void loggingLoop() {
+  char status[100];
+  int value;
+
+  uint32_t milli = millis();
+
+  if ((ntpClient.getHours() == 23) && (ntpClient.getMinutes() == 59) && (ntpClient.getSeconds() > 55)) {
+    Serial.println("removing log.csv");
+    logfile.close();
+    delay(10000); // wait until after midnight to start logging again
+    logfile = SPIFFS.open("/log.csv", "w"); // write with line 1 header
+    logfile.println("Timestamp,Time,value");
+    loggingTimeout = 0;
+  }
+
+  if (milli > loggingTimeout) {
+    value = random(0,1000);
+    sprintf(line,"time:%s",getTimestampString().c_str());
+    webSocketServer->broadcastTXT(line,strlen(line));
+
+    sprintf(line,"value:%d",value);
+    webSocketServer->broadcastTXT(line,strlen(line));
+   
+    sprintf(line,"%ld,%s,%d",ntpClient.getEpochTime(),getTimestampString().c_str(),value);
+    Serial.print(line);
+    Serial.print(" ");
+    Serial.println(ESP.getFreeHeap());
+
+    logfile = SPIFFS.open("/log.csv", "a"); // write with line 1 header
+    logfile.println(line);
+    logfile.close();
+
+    sprintf(status,"status:%s",line);
+    webSocketServer->broadcastTXT(status,strlen(status));
+
+    loggingTimeout = milli + loggingInterval;
+  }
+}
+
+void publishStatic() {
+    sprintf(line,"name:%s",name);
+    webSocketServer->broadcastTXT(line,strlen(line));
+    sprintf(line,"label:%s",label);
+    webSocketServer->broadcastTXT(line,strlen(line));
+}
+
+
