@@ -1,5 +1,5 @@
-{"name":"ncWifiGateway",
- "label":"CTI Network Controller Gateway",
+{"name":"devesp",
+ "label":"ESP8266Template label",
  "heartbeat":{
    "enabled":1,
    "interval":1000,
