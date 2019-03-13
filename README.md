@@ -16,6 +16,7 @@ Supports
 * configurable LED heartbeat
 * configurable alexa compatibility using fauxmoESP
 * configurable NTP compatibility using NTPClient
+* SPIFFS csv log file support with daily reset
 
 Sample URLs (also look at the curl make targets)
 * status query,http://esp8266.local/status
