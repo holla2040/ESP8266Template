@@ -48,5 +48,8 @@ void        ncLoop();
 
 boolean     ntpEnabled;
 long        ntpOffset;
+uint32_t    ntpTimeout;
+uint16_t    ntpInterval; 
+String      getTimestampString();
 
 #endif

@@ -7,7 +7,8 @@
  },
  "ntp":{
     "enabled":1,
-    "offset":-21600
+    "offset":-21600,
+    "interval":1000
   },
  "alexa":{
     "enabled":1,

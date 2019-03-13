@@ -83,6 +83,7 @@ void configLoad() {
     alexaEnabled            = config["alexa"]["enabled"];
     ntpEnabled              = config["ntp"]["enabled"];
     ntpOffset               = config["ntp"]["offset"];
+    ntpInterval             = config["ntp"]["interval"] | 1000;
 
     file.close();
   }
@@ -305,17 +306,6 @@ void heartbeatLoop() {
   }
 }
 
-/* ---- ntp code ----------------------------------------------*/
-void ntpSetup() {
-  ntpClient.begin();
-  ntpClient.setTimeOffset(ntpOffset);
-}
-
-void ntpLoop() {
-  ntpClient.update();
-//   Serial.println(ntpClient.getFormattedTime()); delay(1000);
-}
-
 /* ---- alexa code ----------------------------------------------*/
 void alexaSetup() {
     char devname[NAMELEN];
@@ -351,3 +341,50 @@ void alexaLoop() {
   or you can upload the contents of a folder if you CD in that folder and run the following command:
   for file in `ls -A1`; do echo $file;curl -F "file=@$PWD/$file" myLoc.local/edit; done
 */
+
+
+/* ---- ntp code ----------------------------------------------*/
+void ntpSetup() {
+  ntpClient.begin();
+  ntpClient.setTimeOffset(ntpOffset);
+}
+
+void ntpLoop() {
+  uint32_t milli = millis();
+  ntpClient.update();
+  if (milli > ntpTimeout) {
+    char line[40];
+    sprintf(line,"time:%s",getTimestampString().c_str());
+    webSocketServer->broadcastTXT(line,strlen(line));
+    ntpTimeout = milli + ntpInterval;
+  }
+}
+
+
+/* https://github.com/arduino-libraries/NTPClient/issues/36 */
+String getTimestampString() {
+   time_t rawtime = ntpClient.getEpochTime();
+   struct tm * ti;
+   ti = localtime (&rawtime);
+
+   uint16_t year = ti->tm_year + 1900;
+   String yearStr = String(year);
+
+   uint8_t month = ti->tm_mon + 1;
+   String monthStr = month < 10 ? "0" + String(month) : String(month);
+
+   uint8_t day = ti->tm_mday;
+   String dayStr = day < 10 ? "0" + String(day) : String(day);
+
+   uint8_t hours = ti->tm_hour;
+   String hoursStr = hours < 10 ? "0" + String(hours) : String(hours);
+
+   uint8_t minutes = ti->tm_min;
+   String minuteStr = minutes < 10 ? "0" + String(minutes) : String(minutes);
+
+   uint8_t seconds = ti->tm_sec;
+   String secondStr = seconds < 10 ? "0" + String(seconds) : String(seconds);
+
+   return yearStr + "-" + monthStr + "-" + dayStr + " " +
+          hoursStr + ":" + minuteStr + ":" + secondStr;
+}
