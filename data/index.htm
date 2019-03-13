@@ -17,21 +17,12 @@
       websock.onerror = function(evt) { console.log(evt); };
       websock.onmessage = function(evt) {
         // console.log(evt);
-        [key,value] = evt.data.split(":");
-        switch(key) {
-          case "led":
-            led.innerHTML = value;
-            break;
-          case "uptime":
-            uptime.innerHTML = value;
-            break;
-          case "name":
-            nameid.innerHTML = value;
-            break;
-          case "label":
-            label.innerHTML = value;
-            break;
-        };
+        // splitting evt.data into key,value where value might have ':'
+        var i = evt.data.indexOf(":");
+        var key = evt.data.substr(0,i);
+        var value = evt.data.substr(i);
+        var e = document.getElementById(key);
+        if (e) {e.innerHTML = value;};
       };
     };
 
@@ -102,9 +93,10 @@
   </script>
 </head>
 <body id="index" style="margin:0; padding:0;" onload="onBodyLoad()">
- <pre> name:   <span id="nameid">???</span>
+ <pre> name:   <span id="name">???</span>
  label:  <span id="label">???</span>
  uptime: <span id="uptime">???</span>
+ time:   <span id="time">???</span>
  led:    <span id="led">???</span></pre>
   <div id="controls" style="display: block; border: 1px solid rgb(68, 68, 68); padding: 5px; margin: 5px; width: 362px; background-color: rgb(238, 238, 238);">
     <label>Period (ms):</label>

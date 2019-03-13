@@ -12,7 +12,7 @@
   },
  "alexa":{
     "enabled":1,
-    "devices":["Robert","Jimmy","John Paul","Bonzo"]
+    "devices":["light one","light two"]
   },
  "tcpserver":{
     "enabled":1,
