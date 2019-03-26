@@ -9,6 +9,23 @@
 #include <NTPClient.h>
 #include <FS.h>
 
+/*
+you need to uncomment these lines in Arduino/libraries/TFT_eSPI/User_Setup.h  
+this is config for 1.8" 160x120 color spi display connected to WEMOS mini
+
+#define ST7735_DRIVER
+#define TFT_CS   PIN_D8  // Chip select control pin D8
+#define TFT_DC   PIN_D3  // Data Command control pin
+#define TFT_RST  PIN_D6  // Reset pin (could connect to NodeMCU RST, see next line)
+
+SCL to D5
+SDA to D7
+
+*/
+
+#include <TFT_eSPI.h> // Graphics and font library for ST7735 driver chip
+#include <SPI.h>
+
 #include "fauxmoESP.h"
 #include "project.h"
 #include "fs.h"
@@ -16,6 +33,8 @@
 WiFiUDP   ntpUDP;
 NTPClient ntpClient(ntpUDP);
 File      logfile;
+
+TFT_eSPI display = TFT_eSPI();  // Invoke library, pins defined in User_Setup.h
 
 char line[50];
 
@@ -38,6 +57,7 @@ void setup(void) {
       Serial.print(name);
       Serial.println(".local");
   }
+  Serial.println(WiFi.localIP());
 
   if (tcpServerEnabled)         tcpServerSetup();
   if (websocketserverEnabled)   websocketServerSetup();
@@ -45,7 +65,7 @@ void setup(void) {
   if (alexaEnabled)             alexaSetup();
   if (ntpEnabled)               ntpSetup();
   if (loggingEnabled)           loggingSetup();
-
+  if (displayEnabled)           displaySetup();
 }
 
 void loop(void) {
@@ -57,6 +77,7 @@ void loop(void) {
   if (loggingEnabled)         loggingLoop();
   if (heartbeatEnabled)       heartbeatLoop();
   if (websocketserverEnabled) websocketserverLoop();
+  if (displayEnabled)         displayLoop();
 
   ESP.wdtFeed(); 
   yield();
@@ -79,18 +100,20 @@ void configLoad() {
     Serial.print("label:     ");
     Serial.println(label);
 
-    heartbeatEnabled        = config["heartbeat"]["enabled"];
+    heartbeatEnabled        = config["heartbeat"]["enabled"] | 0;
     heartbeatInterval       = config["heartbeat"]["interval"] | 1000;
     heartbeatPin            = config["heartbeat"]["pin"];
-    tcpServerEnabled        = config["tcpserver"]["enabled"];
-    websocketserverEnabled  = config["websocketserver"]["enabled"];
+    tcpServerEnabled        = config["tcpserver"]["enabled"] | 0;
+    websocketserverEnabled  = config["websocketserver"]["enabled"] | 0;
     websocketInterval       = config["websocketserver"]["interval"] | 1000;
-    alexaEnabled            = config["alexa"]["enabled"];
-    ntpEnabled              = config["ntp"]["enabled"];
+    alexaEnabled            = config["alexa"]["enabled"] | 0;
+    ntpEnabled              = config["ntp"]["enabled"] | 0;
     ntpOffset               = config["ntp"]["offset"];
     ntpInterval             = config["ntp"]["interval"] | 1000;
-    loggingEnabled          = config["logging"]["enabled"];
+    loggingEnabled          = config["logging"]["enabled"] | 0;
     loggingInterval         = config["logging"]["interval"] | 1000;
+    displayEnabled          = config["display"]["enabled"] | 0;
+    displayInterval         = config["display"]["interval"] | 1000;
 
     file.close();
   }
@@ -424,3 +447,21 @@ void publishStatic() {
 }
 
 
+/* ---- display code ----------------------------------------------*/
+void displaySetup() {
+  display.init();
+  display.setRotation(1);
+  display.fillScreen(TFT_BLACK);
+  display.setTextColor(TFT_WHITE,TFT_BLACK);  
+  display.setCursor(0, 0, 2);
+  display.println(WiFi.localIP());
+}
+
+void displayLoop() {
+  uint32_t milli = millis();
+  if (milli > displayTimeout) {
+    display.setCursor(0, 13, 2);
+    display.print(getTimestampString()); 
+    displayTimeout = milli + displayInterval;
+  }
+}

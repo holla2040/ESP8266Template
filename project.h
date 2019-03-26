@@ -56,5 +56,9 @@ boolean     loggingEnabled;
 uint32_t    loggingTimeout;
 uint16_t    loggingInterval;
 
+boolean     displayEnabled;
+uint32_t    displayTimeout;
+uint16_t    displayInterval;
+
 
 #endif

@@ -17,6 +17,7 @@ Supports
 * configurable alexa compatibility using fauxmoESP
 * configurable NTP compatibility using NTPClient
 * SPIFFS csv log file support with daily reset
+* TFT_eSPI for various graphical displays
 
 Sample URLs (also look at the curl make targets)
 * status query,http://esp8266.local/status
@@ -31,4 +32,5 @@ Requires the following libraries to be installed, tested with arduino IDE 1.8.8
 * https://github.com/me-no-dev/ESPAsyncTCP
 * https://bitbucket.org/xoseperez/fauxmoesp
 * https://github.com/arduino-libraries/NTPClient
+* https://github.com/Bodmer/TFT_eSPI
 
