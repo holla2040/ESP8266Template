@@ -1,7 +1,7 @@
 {"name":"devesp",
  "label":"ESP8266Template label",
  "display":{
-   "enabled":1,
+   "enabled":0,
    "interval":1000
  },
  "heartbeat":{
@@ -28,6 +28,7 @@
   },
   "logging":{
     "enabled":1,
-    "interval":10000
+    "interval":10000,
+    "posturl":""
   }
 }

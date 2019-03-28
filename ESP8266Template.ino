@@ -7,7 +7,10 @@
 #include <EEPROM.h>
 #include <ArduinoJson.h>
 #include <NTPClient.h>
+#include <ESP8266HTTPClient.h>
 #include <FS.h>
+
+const char logFn[] = "/log.csv";
 
 /*
 you need to uncomment these lines in Arduino/libraries/TFT_eSPI/User_Setup.h  
@@ -66,6 +69,8 @@ void setup(void) {
   if (ntpEnabled)               ntpSetup();
   if (loggingEnabled)           loggingSetup();
   if (displayEnabled)           displaySetup();
+
+  loggingPost();
 }
 
 void loop(void) {
@@ -111,6 +116,7 @@ void configLoad() {
     ntpOffset               = config["ntp"]["offset"];
     ntpInterval             = config["ntp"]["interval"] | 1000;
     loggingEnabled          = config["logging"]["enabled"] | 0;
+    strlcpy(loggingPostURL,config["logging"]["posturl"],POSTURLLEN);
     loggingInterval         = config["logging"]["interval"] | 1000;
     displayEnabled          = config["display"]["enabled"] | 0;
     displayInterval         = config["display"]["interval"] | 1000;
@@ -392,10 +398,10 @@ void loggingSetup() {
   /* https://tttapa.github.io/ESP8266/Chap16%20-%20Data%20Logging.html */
   /* ~/.arduino15/packages/esp8266/hardware/esp8266/2.5.0/cores/esp8266/FS.h */
 
-  if (SPIFFS.exists("/log.csv")) {
-    logfile = SPIFFS.open("/log.csv", "a"); // append on exists
+  if (SPIFFS.exists(logFn)) {
+    logfile = SPIFFS.open(logFn, "a"); // append on exists
   } else {
-    logfile = SPIFFS.open("/log.csv", "w"); // write with line 1 header
+    logfile = SPIFFS.open(logFn, "w"); // write with line 1 header
     logfile.println("Timestamp,Time,value");
   }
 }
@@ -410,7 +416,7 @@ void loggingLoop() {
     Serial.println("removing log.csv");
     logfile.close();
     delay(10000); // wait until after midnight to start logging again
-    logfile = SPIFFS.open("/log.csv", "w"); // write with line 1 header
+    logfile = SPIFFS.open(logFn, "w"); // write with line 1 header
     logfile.println("Timestamp,Time,value");
     loggingTimeout = 0;
   }
@@ -428,7 +434,7 @@ void loggingLoop() {
     Serial.print(" ");
     Serial.println(ESP.getFreeHeap());
 
-    logfile = SPIFFS.open("/log.csv", "a"); // write with line 1 header
+    logfile = SPIFFS.open(logFn, "a"); // write with line 1 header
     logfile.println(line);
     logfile.close();
 
@@ -438,6 +444,46 @@ void loggingLoop() {
     loggingTimeout = milli + loggingInterval;
   }
 }
+
+void loggingPost() {
+  if (strlen(loggingPostURL)) {
+    HTTPClient http;
+
+    logfile = SPIFFS.open(logFn, "r"); 
+    size_t contentLength = logfile.size();
+
+    Serial.println("loggingPost");
+    Serial.println(loggingPostURL);
+    Serial.println(contentLength);
+
+    http.begin(loggingPostURL);
+    http.addHeader("Content-Type", "application/octet-stream");
+    http.addHeader("Content-Length", String(contentLength));
+    http.addHeader("Filename", "log.csv");
+    int httpCode = http.sendRequest("POST",&logfile,contentLength);
+
+    if (httpCode > 0) {
+      Serial.printf("[HTTP] GET... code: %d\n", httpCode);
+      if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
+        String payload = http.getString();
+        Serial.println(payload);
+      }
+    } else {
+      Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
+    }
+
+    
+    http.end();
+    Serial.print("httpCode ");
+    Serial.println(httpCode);
+
+    logfile.close();
+  }
+}
+
+
+
+/* ---- status code ----------------------------------------------*/
 
 void publishStatic() {
     sprintf(line,"name:%s",name);

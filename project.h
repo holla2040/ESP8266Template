@@ -3,6 +3,7 @@
 
 #define NAMELEN 20
 #define LABELLEN 50
+#define POSTURLLEN 50
 
 char name[NAMELEN];
 char label[LABELLEN];
@@ -55,6 +56,8 @@ String      getTimestampString();
 boolean     loggingEnabled;
 uint32_t    loggingTimeout;
 uint16_t    loggingInterval;
+void        loggingPost();
+char        loggingPostURL[POSTURLLEN];
 
 boolean     displayEnabled;
 uint32_t    displayTimeout;
