@@ -454,8 +454,7 @@ void loggingLoop() {
 
   uint32_t milli = millis();
 
-  //if ((ntpClient.getHours() == 23) && (ntpClient.getMinutes() == 59) && (ntpClient.getSeconds() > 50)) {
-  if ((ntpClient.getHours() == 01) && (ntpClient.getMinutes() == 00) && (ntpClient.getSeconds() > 55)) {
+  if ((ntpClient.getHours() == 23) && (ntpClient.getMinutes() == 59) && (ntpClient.getSeconds() > 50)) {
     loggingPost();
     Serial.println("removing log.csv"); 
     logfile.close();
