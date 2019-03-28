@@ -69,8 +69,6 @@ void setup(void) {
   if (ntpEnabled)               ntpSetup();
   if (loggingEnabled)           loggingSetup();
   if (displayEnabled)           displaySetup();
-
-  loggingPost();
 }
 
 void loop(void) {
@@ -394,6 +392,49 @@ String getTimestampString() {
           hoursStr + ":" + minuteStr + ":" + secondStr;
 }
 
+String getTimestampStringShort() {
+   time_t rawtime = ntpClient.getEpochTime();
+   struct tm * ti;
+   ti = localtime (&rawtime);
+
+   uint16_t year = ti->tm_year - 100; // +1900-2000
+   String yearStr = String(year);
+
+   uint8_t month = ti->tm_mon + 1;
+   String monthStr = month < 10 ? "0" + String(month) : String(month);
+
+   uint8_t day = ti->tm_mday;
+   String dayStr = day < 10 ? "0" + String(day) : String(day);
+
+   uint8_t hours = ti->tm_hour;
+   String hoursStr = hours < 10 ? "0" + String(hours) : String(hours);
+
+   uint8_t minutes = ti->tm_min;
+   String minuteStr = minutes < 10 ? "0" + String(minutes) : String(minutes);
+
+   uint8_t seconds = ti->tm_sec;
+   String secondStr = seconds < 10 ? "0" + String(seconds) : String(seconds);
+
+   return yearStr + monthStr + dayStr + "-" + hoursStr + minuteStr + secondStr;
+}
+
+String getDateStringShort() {
+   time_t rawtime = ntpClient.getEpochTime();
+   struct tm * ti;
+   ti = localtime (&rawtime);
+
+   uint16_t year = ti->tm_year - 100; // +1900-2000
+   String yearStr = String(year);
+
+   uint8_t month = ti->tm_mon + 1;
+   String monthStr = month < 10 ? "0" + String(month) : String(month);
+
+   uint8_t day = ti->tm_mday;
+   String dayStr = day < 10 ? "0" + String(day) : String(day);
+
+   return yearStr + monthStr + dayStr;
+}
+
 /* ---- logging code ----------------------------------------------*/
 void loggingSetup() {
   /* https://tttapa.github.io/ESP8266/Chap16%20-%20Data%20Logging.html */
@@ -413,8 +454,10 @@ void loggingLoop() {
 
   uint32_t milli = millis();
 
-  if ((ntpClient.getHours() == 23) && (ntpClient.getMinutes() == 59) && (ntpClient.getSeconds() > 55)) {
-    Serial.println("removing log.csv");
+  //if ((ntpClient.getHours() == 23) && (ntpClient.getMinutes() == 59) && (ntpClient.getSeconds() > 50)) {
+  if ((ntpClient.getHours() == 01) && (ntpClient.getMinutes() == 00) && (ntpClient.getSeconds() > 55)) {
+    loggingPost();
+    Serial.println("removing log.csv"); 
     logfile.close();
     delay(10000); // wait until after midnight to start logging again
     logfile = SPIFFS.open(logFn, "w"); // write with line 1 header
@@ -450,20 +493,21 @@ void loggingPost() {
   if (strlen(loggingPostURL)) {
     HTTPClient http;
     char uploadName[50];
-    sprintf(uploadName,"%s-log.csv",name);
+    sprintf(uploadName,"%s-%s-log.csv",name,getTimestampStringShort().c_str());
 
     logfile = SPIFFS.open(logFn, "r"); 
     size_t contentLength = logfile.size();
-
-    Serial.println("loggingPost");
-    Serial.println(loggingPostURL);
-    Serial.println(contentLength);
 
     http.begin(loggingPostURL);
     http.addHeader("Content-Type", "application/octet-stream");
     http.addHeader("Content-Length", String(contentLength));
     http.addHeader("Filename", uploadName);
     int httpCode = http.sendRequest("POST",&logfile,contentLength);
+
+/*
+    Serial.println("loggingPost");
+    Serial.println(loggingPostURL);
+    Serial.println(contentLength);
 
     if (httpCode > 0) {
       Serial.printf("[HTTP] GET... code: %d\n", httpCode);
@@ -474,13 +518,19 @@ void loggingPost() {
     } else {
       Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
     }
-
-    
-    http.end();
     Serial.print("httpCode ");
     Serial.println(httpCode);
-
+*/
+    
+    http.end();
     logfile.close();
+    String fn = "/log-"+getDateStringShort()+".csv";
+    Serial.println(SPIFFS.rename("/log.csv",fn.c_str()));
+/*
+    if (httpCode != 200) {
+      SPIFFS.rename("/log.csv",uploadName);
+    }
+*/
   }
 }
 
