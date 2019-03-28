@@ -84,6 +84,7 @@ void loop(void) {
   if (websocketserverEnabled) websocketserverLoop();
   if (displayEnabled)         displayLoop();
 
+  MDNS.update();
   ESP.wdtFeed(); 
   yield();
 }

@@ -1,5 +1,6 @@
 {"name":"devesp",
  "label":"ESP8266Template label",
+ "networkname":"devesp",
  "display":{
    "enabled":0,
    "interval":1000
