@@ -449,6 +449,8 @@ void loggingLoop() {
 void loggingPost() {
   if (strlen(loggingPostURL)) {
     HTTPClient http;
+    char uploadName[50];
+    sprintf(uploadName,"%s-log.csv",name);
 
     logfile = SPIFFS.open(logFn, "r"); 
     size_t contentLength = logfile.size();
@@ -460,7 +462,7 @@ void loggingPost() {
     http.begin(loggingPostURL);
     http.addHeader("Content-Type", "application/octet-stream");
     http.addHeader("Content-Length", String(contentLength));
-    http.addHeader("Filename", "log.csv");
+    http.addHeader("Filename", uploadName);
     int httpCode = http.sendRequest("POST",&logfile,contentLength);
 
     if (httpCode > 0) {
