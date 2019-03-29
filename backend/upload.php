@@ -16,7 +16,7 @@
 <!DOCTYPE html>
 <html>
 <body>
-<h3>Cryo Pump Logs</h3>
+<h3>Log Files</h3>
 <hr>
 <?php
     foreach(scandir("uploads/") as $fn) {

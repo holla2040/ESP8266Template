@@ -39,7 +39,7 @@ run: bin
 
 flash: ota
 
-flashusb: 
+usb: 
 	@- pkill -9 -f microcom
 	/home/holla/.arduino15/packages/esp8266/tools/esptool/2.5.0-3-20ed2b9/esptool -vv -cd nodemcu -cb 921600 -cp $(port) -ca 0x00000 -cf /tmp/arduino_build/$(ino).bin 
 	@- pkill -9 -f sleep
