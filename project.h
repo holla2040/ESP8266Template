@@ -4,6 +4,7 @@
 #define NAMELEN 20
 #define LABELLEN 50
 #define POSTURLLEN 50
+#define AWSIOTLEN 60 
 
 char name[NAMELEN];
 char label[LABELLEN];
@@ -62,6 +63,11 @@ char        loggingPostURL[POSTURLLEN];
 boolean     displayEnabled;
 uint32_t    displayTimeout;
 uint16_t    displayInterval;
+
+boolean     awsiotEnabled;
+void        awsiotSetup();
+void        awsiotLoop();
+char        awsiotEndpoint[AWSIOTLEN];
 
 
 #endif

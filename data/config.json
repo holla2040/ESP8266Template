@@ -19,6 +19,10 @@
     "enabled":1,
     "devices":["light one","light two"]
   },
+ "awsiot": {
+    "enabled":1,
+    "endpoint":""
+  },
  "tcpserver":{
     "enabled":1,
     "port":23

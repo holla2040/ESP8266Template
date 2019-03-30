@@ -9,6 +9,8 @@
 #include <NTPClient.h>
 #include <ESP8266HTTPClient.h>
 #include <FS.h>
+#include <PubSubClient.h>
+
 
 const char logFn[] = "/log.csv";
 
@@ -69,6 +71,7 @@ void setup(void) {
   if (ntpEnabled)               ntpSetup();
   if (loggingEnabled)           loggingSetup();
   if (displayEnabled)           displaySetup();
+  if (awsiotEnabled)            awsiotSetup();
 }
 
 void loop(void) {
@@ -81,6 +84,7 @@ void loop(void) {
   if (heartbeatEnabled)       heartbeatLoop();
   if (websocketserverEnabled) websocketserverLoop();
   if (displayEnabled)         displayLoop();
+  if (awsiotEnabled)          awsiotLoop();
 
   MDNS.update();
   ESP.wdtFeed(); 
@@ -119,6 +123,7 @@ void configLoad() {
     loggingInterval         = config["logging"]["interval"] | 1000;
     displayEnabled          = config["display"]["enabled"] | 0;
     displayInterval         = config["display"]["interval"] | 1000;
+    awsiotEnabled           = config["awsiot"]["enabled"] | 0;
 
     file.close();
   }
@@ -562,4 +567,25 @@ void displayLoop() {
     display.print(getTimestampString()); 
     displayTimeout = milli + displayInterval;
   }
+}
+
+/* ---- awsiot code ----------------------------------------------*/
+void awsiotHandler(char* topic, byte* payload, unsigned int length) {
+  Serial.print("Message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
+  for (int i = 0; i < length; i++) {
+    Serial.print((char)payload[i]);
+  }
+  Serial.println();
+}
+
+WiFiClientSecure espClient;
+PubSubClient     awsiotClient(espClient); 
+
+void awsiotSetup() {
+  // awsiotClient.setCallback(awsiotEndpoint, 8883, awsiotHandler, 
+}
+
+void awsiotLoop() {
 }
