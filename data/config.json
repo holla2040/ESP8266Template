@@ -1,6 +1,5 @@
 {"name":"devesp",
  "label":"ESP8266Template label",
- "networkname":"devesp",
  "display":{
    "enabled":0,
    "interval":1000
@@ -16,15 +15,15 @@
     "interval":1000
   },
  "alexa":{
-    "enabled":1,
+    "enabled":0,
     "devices":["light one","light two"]
   },
  "awsiot": {
-    "enabled":1,
+    "enabled":0,
     "endpoint":""
   },
  "tcpserver":{
-    "enabled":1,
+    "enabled":0,
     "port":23
   },
   "websocketserver":{
@@ -32,7 +31,7 @@
     "interval":1000
   },
   "logging":{
-    "enabled":1,
+    "enabled":0,
     "interval":10000,
     "posturl":""
   }

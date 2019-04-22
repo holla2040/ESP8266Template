@@ -20,6 +20,7 @@ Supports
 * TFT_eSPI for various graphical displays
 * supports pre-midnight log file HTTP POST to external site
 * support for AWS IoT MQTT using x.509 certs and TLSv1.2
+* support for PubSubClient
 
 Sample URLs (also look at the curl make targets)
 * status query,http://esp8266.local/status
@@ -36,6 +37,7 @@ Requires the following libraries to be installed, tested with arduino IDE 1.8.8
 * https://github.com/arduino-libraries/NTPClient
 * https://github.com/Bodmer/TFT_eSPI
 * https://github.com/copercini/esp8266-aws_iot
+* https://pubsubclient.knolleary.net/
 
 AWS IoT Notes
 * Login to AWS Management console, navigate to IoT Core

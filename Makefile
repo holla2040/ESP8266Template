@@ -49,7 +49,9 @@ files:
 	name=${name} ./transferdata.sh
 	curl http://${name}/reload
 
-data:
+.PHONY: data
+
+data: 
 	@/home/holla/.arduino15/packages/esp8266/tools/mkspiffs/2.5.0-3-20ed2b9/mkspiffs -c data/ -s 0x2FB000 -b 0x2000 /tmp/data.bin
 	@/home/holla/.arduino15/packages/esp8266/tools/esptool/2.5.0-3-20ed2b9/esptool -vv -cd nodemcu -cb 921600 -cp /dev/ttyUSB0 -ca 0x100000 -cf /tmp/data.bin
 

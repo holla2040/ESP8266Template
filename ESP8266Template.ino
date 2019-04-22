@@ -52,7 +52,7 @@ void setup(void) {
 
   configLoad();
 
-  // wifiManager.resetSettings();
+  // wifiManager.resetSettings(); // use this to reset wifimanager creds
   wifiManager.autoConnect(name);
 
   httpServerSetup();
