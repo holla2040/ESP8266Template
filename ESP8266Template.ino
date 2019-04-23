@@ -1,4 +1,3 @@
-
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
@@ -23,6 +22,7 @@ this is config for 1.8" 160x120 color spi display connected to WEMOS mini
 #define TFT_CS   PIN_D8  // Chip select control pin D8
 #define TFT_DC   PIN_D3  // Data Command control pin
 #define TFT_RST  PIN_D6  // Reset pin (could connect to NodeMCU RST, see next line)
+
 
 SCL to D5
 SDA to D7
@@ -55,6 +55,8 @@ void setup(void) {
 
   configLoad();
 
+  if (displayEnabled)           displaySetup();
+
   // wifiManager.resetSettings(); // use this to reset wifimanager creds
   wifiManager.autoConnect(name);
 
@@ -73,8 +75,12 @@ void setup(void) {
   if (alexaEnabled)             alexaSetup();
   if (ntpEnabled)               ntpSetup();
   if (loggingEnabled)           loggingSetup();
-  if (displayEnabled)           displaySetup();
   if (awsiotEnabled)            awsiotSetup();
+
+  if (displayEnabled) {
+    display.setCursor(70, 4, 1);
+    display.print(WiFi.localIP());
+  }
 }
 
 void loop(void) {
@@ -559,19 +565,17 @@ void displaySetup() {
   display.setRotation(1);
   display.fillScreen(TFT_BLACK);
   display.setTextColor(TFT_WHITE,TFT_BLACK);  
-  display.setCursor(0, 0, 1);
+  display.setCursor(2, 4, 1);
   display.print(name);
-  display.setCursor(70, 0, 1);
-  display.print(WiFi.localIP());
 }
 
 void displayLoop() {
   uint32_t milli = millis();
   if (milli > displayTimeout) {
-    display.setCursor(0, 10, 2);
+    display.setCursor(2, 14, 2);
     display.print(getTimestampString()); 
     displayTimeout = milli + displayInterval;
-    display.setCursor(0, 30, 8);
+    display.setCursor(2, 34, 8);
     display.print(millis()/1000);
     display.setTextSize(1);
   }
