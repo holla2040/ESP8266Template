@@ -1,3 +1,4 @@
+
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
@@ -27,6 +28,8 @@ SCL to D5
 SDA to D7
 
 */
+
+#define LOAD_FONT7 
 
 #include <TFT_eSPI.h> // Graphics and font library for ST7735 driver chip
 #include <SPI.h>
@@ -556,17 +559,21 @@ void displaySetup() {
   display.setRotation(1);
   display.fillScreen(TFT_BLACK);
   display.setTextColor(TFT_WHITE,TFT_BLACK);  
-  display.setCursor(0, 0, 2);
-  display.println(WiFi.localIP());
+  display.setCursor(0, 0, 1);
+  display.print(name);
+  display.setCursor(70, 0, 1);
+  display.print(WiFi.localIP());
 }
 
 void displayLoop() {
   uint32_t milli = millis();
   if (milli > displayTimeout) {
-// Serial.println(millis());
-    display.setCursor(0, 13, 2);
+    display.setCursor(0, 10, 2);
     display.print(getTimestampString()); 
     displayTimeout = milli + displayInterval;
+    display.setCursor(0, 30, 8);
+    display.print(millis()/1000);
+    display.setTextSize(1);
   }
 }
 
