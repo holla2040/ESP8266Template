@@ -575,7 +575,7 @@ void displayLoop() {
     display.setCursor(2, 14, 2);
     display.print(getTimestampString()); 
     displayTimeout = milli + displayInterval;
-    display.setCursor(2, 34, 8);
+    display.setCursor(0, 34, 8);
     display.print(millis()/1000);
     display.setTextSize(1);
   }
