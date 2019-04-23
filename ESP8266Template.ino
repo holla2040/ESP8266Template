@@ -563,6 +563,7 @@ void displaySetup() {
 void displayLoop() {
   uint32_t milli = millis();
   if (milli > displayTimeout) {
+// Serial.println(millis());
     display.setCursor(0, 13, 2);
     display.print(getTimestampString()); 
     displayTimeout = milli + displayInterval;
