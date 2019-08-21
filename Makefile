@@ -25,22 +25,23 @@ arduinodir = /home/holla/arduino
 arduinosketch = /home/holla/Arduino
 arduinosdir15 = /home/holla/.arduino15
 
+espversion = $(shell find ~/.arduino15/ -name xtensa-lx106-elf-g++ | cut -f 9 -d '/')
+
 spiffs=4M2M
 
 try:
 	@mkdir -p /tmp/arduino_build /tmp/arduino_cache
-	# /home/holla/arduino/arduino-builder -dump-prefs -logger=machine -hardware /home/holla/arduino/hardware -hardware /home/holla/.arduino15/packages -hardware /home/holla/Arduino/hardware -tools /home/holla/arduino/tools-builder -tools /home/holla/arduino/hardware/tools/avr -tools /home/holla/.arduino15/packages -built-in-libraries /home/holla/arduino/libraries -libraries /home/holla/Arduino/libraries -fqbn=esp8266:esp8266:d1_mini:xtal=80,vt=flash,exception=disabled,eesz=$(spiffs),ip=lm2f,dbg=Disabled,lvl=None____,wipe=none,baud=921600 -ide-version=10808 -build-path /tmp/arduino_build -warnings=none -build-cache /tmp/arduino_cache -prefs=build.warn_data_percentage=75 -prefs=runtime.tools.mkspiffs.path=/home/holla/.arduino15/packages/esp8266/tools/mkspiffs/2.5.0-3-20ed2b9 -prefs=runtime.tools.mkspiffs-2.5.0-3-20ed2b9.path=/home/holla/.arduino15/packages/esp8266/tools/mkspiffs/2.5.0-3-20ed2b9 -prefs=runtime.tools.esptool.path=/home/holla/.arduino15/packages/esp8266/tools/esptool/2.5.0-3-20ed2b9 -prefs=runtime.tools.esptool-2.5.0-3-20ed2b9.path=/home/holla/.arduino15/packages/esp8266/tools/esptool/2.5.0-3-20ed2b9 -prefs=runtime.tools.xtensa-lx106-elf-gcc.path=/home/holla/.arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/2.5.0-3-20ed2b9 -prefs=runtime.tools.xtensa-lx106-elf-gcc-2.5.0-3-20ed2b9.path=/home/holla/.arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/2.5.0-3-20ed2b9 -verbose ./$(ino)
-	/home/holla/arduino/arduino-builder -compile -logger=machine -hardware /home/holla/arduino/hardware -hardware /home/holla/.arduino15/packages -hardware /home/holla/Arduino/hardware -tools /home/holla/arduino/tools-builder -tools /home/holla/arduino/hardware/tools/avr -tools /home/holla/.arduino15/packages -built-in-libraries /home/holla/arduino/libraries -libraries /home/holla/Arduino/libraries -fqbn=esp8266:esp8266:d1_mini:xtal=80,vt=flash,exception=disabled,eesz=$(spiffs),ip=lm2f,dbg=Disabled,lvl=None____,wipe=none,baud=921600 -ide-version=10808 -build-path /tmp/arduino_build -warnings=none -build-cache /tmp/arduino_cache -prefs=build.warn_data_percentage=75 -prefs=runtime.tools.mkspiffs.path=/home/holla/.arduino15/packages/esp8266/tools/mkspiffs/2.5.0-3-20ed2b9 -prefs=runtime.tools.mkspiffs-2.5.0-3-20ed2b9.path=/home/holla/.arduino15/packages/esp8266/tools/mkspiffs/2.5.0-3-20ed2b9 -prefs=runtime.tools.esptool.path=/home/holla/.arduino15/packages/esp8266/tools/esptool/2.5.0-3-20ed2b9 -prefs=runtime.tools.esptool-2.5.0-3-20ed2b9.path=/home/holla/.arduino15/packages/esp8266/tools/esptool/2.5.0-3-20ed2b9 -prefs=runtime.tools.xtensa-lx106-elf-gcc.path=/home/holla/.arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/2.5.0-3-20ed2b9 -prefs=runtime.tools.xtensa-lx106-elf-gcc-2.5.0-3-20ed2b9.path=/home/holla/.arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/2.5.0-3-20ed2b9 -verbose ./$(ino)
+	/home/holla/arduino/arduino-builder -compile -logger=machine -hardware /home/holla/arduino/hardware -hardware /home/holla/.arduino15/packages -hardware /home/holla/Arduino/hardware -tools /home/holla/arduino/tools-builder -tools /home/holla/arduino/hardware/tools/avr -tools /home/holla/.arduino15/packages -built-in-libraries /home/holla/arduino/libraries -libraries /home/holla/Arduino/libraries -fqbn=esp8266:esp8266:d1_mini:xtal=80,vt=flash,exception=disabled,eesz=$(spiffs),ip=lm2f,dbg=Disabled,lvl=None____,wipe=none,baud=921600 -ide-version=10808 -build-path /tmp/arduino_build -warnings=none -build-cache /tmp/arduino_cache -prefs=build.warn_data_percentage=75 -prefs=runtime.tools.mkspiffs.path=/home/holla/.arduino15/packages/esp8266/tools/mkspiffs/$(espversion) -prefs=runtime.tools.mkspiffs-$(espversion).path=/home/holla/.arduino15/packages/esp8266/tools/mkspiffs/$(espversion) -prefs=runtime.tools.esptool.path=/home/holla/.arduino15/packages/esp8266/tools/esptool/$(espversion) -prefs=runtime.tools.esptool-$(espversion).path=/home/holla/.arduino15/packages/esp8266/tools/esptool/$(espversion) -prefs=runtime.tools.xtensa-lx106-elf-gcc.path=/home/holla/.arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/$(espversion) -prefs=runtime.tools.xtensa-lx106-elf-gcc-$(espversion).path=/home/holla/.arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/$(espversion) -verbose ./$(ino)
 
 
 run: bin
-	/home/holla/.arduino15/packages/esp8266/tools/esptool/2.5.0-3-20ed2b9/esptool -vv -cd nodemcu -cb 921600 -cp $(port) -ca 0x00000 -cf /tmp/arduino_build/$(ino).bin 
+	/home/holla/.arduino15/packages/esp8266/tools/esptool/$(espversion)/esptool -vv -cd nodemcu -cb 921600 -cp $(port) -ca 0x00000 -cf /tmp/arduino_build/$(ino).bin 
 
 flash: ota
 
 usb: 
 	@- pkill -9 -f microcom
-	/home/holla/.arduino15/packages/esp8266/tools/esptool/2.5.0-3-20ed2b9/esptool -vv -cd nodemcu -cb 921600 -cp $(port) -ca 0x00000 -cf /tmp/arduino_build/$(ino).bin 
+	/home/holla/.arduino15/packages/esp8266/tools/esptool/$(espversion)/esptool -vv -cd nodemcu -cb 921600 -cp $(port) -ca 0x00000 -cf /tmp/arduino_build/$(ino).bin 
 	@- pkill -9 -f sleep
 
 files:
@@ -51,22 +52,22 @@ files:
 .PHONY: data
 
 data3m: 
-	@/home/holla/.arduino15/packages/esp8266/tools/mkspiffs/2.5.0-3-20ed2b9/mkspiffs -c data/ -s 0x2FB000 -b 0x2000 /tmp/data.bin
-	@/home/holla/.arduino15/packages/esp8266/tools/esptool/2.5.0-3-20ed2b9/esptool -vv -cd nodemcu -cb 921600 -cp /dev/ttyUSB0 -ca 0x100000 -cf /tmp/data.bin
+	@/home/holla/.arduino15/packages/esp8266/tools/mkspiffs/$(espversion)/mkspiffs -c data/ -s 0x2FB000 -b 0x2000 /tmp/data.bin
+	@/home/holla/.arduino15/packages/esp8266/tools/esptool/$(espversion)/esptool -vv -cd nodemcu -cb 921600 -cp /dev/ttyUSB0 -ca 0x100000 -cf /tmp/data.bin
 
 data2m: 
-	@/home/holla/.arduino15/packages/esp8266/tools/mkspiffs/2.5.0-3-20ed2b9/mkspiffs -c data/ -s 0x1FB000 -b 0x2000 /tmp/data.bin
-	@/home/holla/.arduino15/packages/esp8266/tools/esptool/2.5.0-3-20ed2b9/esptool -vv -cd nodemcu -cb 921600 -cp /dev/ttyUSB0 -ca 0x200000 -cf /tmp/data.bin
+	@/home/holla/.arduino15/packages/esp8266/tools/mkspiffs/$(espversion)/mkspiffs -c data/ -s 0x1FB000 -b 0x2000 /tmp/data.bin
+	@/home/holla/.arduino15/packages/esp8266/tools/esptool/$(espversion)/esptool -vv -cd nodemcu -cb 921600 -cp /dev/ttyUSB0 -ca 0x200000 -cf /tmp/data.bin
 
 data1m: 
-	@/home/holla/.arduino15/packages/esp8266/tools/mkspiffs/2.5.0-3-20ed2b9/mkspiffs -c data/ -s 0xFB000 -b 0x2000 /tmp/data.bin
-	@/home/holla/.arduino15/packages/esp8266/tools/esptool/2.5.0-3-20ed2b9/esptool -vv -cd nodemcu -cb 921600 -cp /dev/ttyUSB0 -ca 0x300000 -cf /tmp/data.bin
+	@/home/holla/.arduino15/packages/esp8266/tools/mkspiffs/$(espversion)/mkspiffs -c data/ -s 0xFB000 -b 0x2000 /tmp/data.bin
+	@/home/holla/.arduino15/packages/esp8266/tools/esptool/$(espversion)/esptool -vv -cd nodemcu -cb 921600 -cp /dev/ttyUSB0 -ca 0x300000 -cf /tmp/data.bin
 
 flashall: 
-	/home/holla/.arduino15/packages/esp8266/tools/esptool/2.5.0-3-20ed2b9/esptool -vv -cd nodemcu -cb 921600 -cp $(port) -ca 0x00000 -cf /tmp/arduino_build/$(ino).bin 
+	/home/holla/.arduino15/packages/esp8266/tools/esptool/$(espversion)/esptool -vv -cd nodemcu -cb 921600 -cp $(port) -ca 0x00000 -cf /tmp/arduino_build/$(ino).bin 
 	sleep 5
-	/home/holla/.arduino15/packages/esp8266/tools/mkspiffs/2.5.0-3-20ed2b9/mkspiffs -c data/ -s 0x2FB000 -b 0x2000 /tmp/data.bin
-	/home/holla/.arduino15/packages/esp8266/tools/esptool/2.5.0-3-20ed2b9/esptool -vv -cd nodemcu -cb 921600 -cp /dev/ttyUSB0 -ca $(spibaseaddr) -cf /tmp/data.bin
+	/home/holla/.arduino15/packages/esp8266/tools/mkspiffs/$(espversion)/mkspiffs -c data/ -s 0x2FB000 -b 0x2000 /tmp/data.bin
+	/home/holla/.arduino15/packages/esp8266/tools/esptool/$(espversion)/esptool -vv -cd nodemcu -cb 921600 -cp /dev/ttyUSB0 -ca $(spibaseaddr) -cf /tmp/data.bin
 
 reload:
 	@echo ${name}
