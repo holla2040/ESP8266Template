@@ -41,7 +41,7 @@ flash: ota
 
 usb: 
 	@- pkill -9 -f microcom
-	/home/holla/.arduino15/packages/esp8266/tools/esptool/$(espversion)/esptool -vv -cd nodemcu -cb 921600 -cp $(port) -ca 0x00000 -cf /tmp/arduino_build/$(ino).bin 
+	esptool -vv -cd nodemcu -cb 921600 -cp $(port) -ca 0x00000 -cf /tmp/arduino_build/$(ino).bin 
 	@- pkill -9 -f sleep
 
 files:
@@ -53,21 +53,21 @@ files:
 
 data3m: 
 	@/home/holla/.arduino15/packages/esp8266/tools/mkspiffs/$(espversion)/mkspiffs -c data/ -s 0x2FB000 -b 0x2000 /tmp/data.bin
-	@/home/holla/.arduino15/packages/esp8266/tools/esptool/$(espversion)/esptool -vv -cd nodemcu -cb 921600 -cp /dev/ttyUSB0 -ca 0x100000 -cf /tmp/data.bin
+	@esptool -vv -cd nodemcu -cb 921600 -cp $(port) -ca 0x100000 -cf /tmp/data.bin
 
 data2m: 
 	@/home/holla/.arduino15/packages/esp8266/tools/mkspiffs/$(espversion)/mkspiffs -c data/ -s 0x1FB000 -b 0x2000 /tmp/data.bin
-	@/home/holla/.arduino15/packages/esp8266/tools/esptool/$(espversion)/esptool -vv -cd nodemcu -cb 921600 -cp /dev/ttyUSB0 -ca 0x200000 -cf /tmp/data.bin
+	@@esptool -vv -cd nodemcu -cb 921600 -cp $(port) -ca 0x200000 -cf /tmp/data.bin
 
 data1m: 
 	@/home/holla/.arduino15/packages/esp8266/tools/mkspiffs/$(espversion)/mkspiffs -c data/ -s 0xFB000 -b 0x2000 /tmp/data.bin
-	@/home/holla/.arduino15/packages/esp8266/tools/esptool/$(espversion)/esptool -vv -cd nodemcu -cb 921600 -cp /dev/ttyUSB0 -ca 0x300000 -cf /tmp/data.bin
+	@esptool -vv -cd nodemcu -cb 921600 -cp $(port) -ca 0x300000 -cf /tmp/data.bin
 
 flashall: 
-	/home/holla/.arduino15/packages/esp8266/tools/esptool/$(espversion)/esptool -vv -cd nodemcu -cb 921600 -cp $(port) -ca 0x00000 -cf /tmp/arduino_build/$(ino).bin 
+	esptool -vv -cd nodemcu -cb 921600 -cp $(port) -ca 0x00000 -cf /tmp/arduino_build/$(ino).bin 
 	sleep 5
 	/home/holla/.arduino15/packages/esp8266/tools/mkspiffs/$(espversion)/mkspiffs -c data/ -s 0x2FB000 -b 0x2000 /tmp/data.bin
-	/home/holla/.arduino15/packages/esp8266/tools/esptool/$(espversion)/esptool -vv -cd nodemcu -cb 921600 -cp /dev/ttyUSB0 -ca $(spibaseaddr) -cf /tmp/data.bin
+	esptool -vv -cd nodemcu -cb 921600 -cp $(port) -ca $(spibaseaddr) -cf /tmp/data.bin
 
 reload:
 	@echo ${name}

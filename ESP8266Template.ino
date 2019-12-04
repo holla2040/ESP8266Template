@@ -215,7 +215,7 @@ void httpServerSetup() {
     heartbeatTimeout = 0;
   });
 
-  httpServer.on("/reset", []() {
+  httpServer.on("/factory", []() {
     httpServer.send(200, "text/plain", "reseting wifi settings\n");
     wifiManager.resetSettings();
   });
