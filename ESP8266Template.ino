@@ -81,6 +81,7 @@ void setup(void) {
     display.setCursor(70, 4, 1);
     display.print(WiFi.localIP());
   }
+  Serial.println(TCP_MSS);
 }
 
 void loop(void) {
